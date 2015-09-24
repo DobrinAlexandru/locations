@@ -10,13 +10,12 @@ var options = {
   cert: fs.readFileSync('./intersect-cert.pem')
 };
 
-var nodeListener = https.createServer(options, function (req, res) {
-  res.writeHead(200);
-  res.end("hello wooooorld\n");
-});
-
 var server = new Hapi.Server();
-server.connection({ port: 3000, listener: nodeListener, tls: true });
+server.connection({
+  port: 3000,
+  listener: https.createServer(options, function (req, res) {}),
+  tls: true
+});
 
 server.route({
     method: 'GET',
