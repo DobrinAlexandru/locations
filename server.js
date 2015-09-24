@@ -1,16 +1,3 @@
-// var https = require('https');
-// var fs = require('fs');
-//
-// var options = {
-//   key: fs.readFileSync('intersect-key.pem'),
-//   cert: fs.readFileSync('intersect-cert.pem')
-// };
-//
-// var a = https.createServer(options, function (req, res) {
-//   res.writeHead(200);
-//   res.end("hello world\n");
-// }).listen(8000);
-
 var Hapi = require('hapi');
 var joi = require('joi');
 
