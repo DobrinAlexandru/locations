@@ -1,8 +1,35 @@
+// var https = require('https');
+// var fs = require('fs');
+//
+// var options = {
+//   key: fs.readFileSync('intersect-key.pem'),
+//   cert: fs.readFileSync('intersect-cert.pem')
+// };
+//
+// var a = https.createServer(options, function (req, res) {
+//   res.writeHead(200);
+//   res.end("hello world\n");
+// }).listen(8000);
+
 var Hapi = require('hapi');
 var joi = require('joi');
 
+var https = require('https');
+var http = require('http');
+var fs = require('fs');
+
+var options = {
+  key: fs.readFileSync('./intersect-key.pem'),
+  cert: fs.readFileSync('./intersect-cert.pem')
+};
+
+var nodeListener = https.createServer(options, function (req, res) {
+  res.writeHead(200);
+  res.end("hello wooooorld\n");
+});
+
 var server = new Hapi.Server();
-server.connection({ port: 3000 });
+server.connection({ port: 3000, listener: nodeListener, tls: true });
 
 server.route({
     method: 'GET',
