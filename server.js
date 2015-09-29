@@ -24,7 +24,7 @@ server.route({
     handler: function (request, reply) {
       var db = request.server.plugins['hapi-mongodb'].db;
       db.collection('locations').find().toArray(function (err, doc){
-        reply(doc);
+        reply({ "success" : doc });
       });
     }
 });
@@ -42,7 +42,7 @@ server.route({
         if (err){
           return reply(Hapi.error.internal('Internal MongoDB error', err));
         } else {
-          reply({success: "Hello!!! yayayyyy"});
+          reply({"success": "Hello!!! yayayyyy"});
         }
       });
     },
@@ -60,7 +60,7 @@ server.route({
     method: 'GET',
     path: '/',
     handler: function (request, reply) {
-        reply({success: "loc v0.2 !!!!!"});
+        reply({success: "loc v0.3 !!!!!"});
     }
 });
 
