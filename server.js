@@ -12,9 +12,10 @@ var options = {
 
 var server = new Hapi.Server();
 server.connection({
-  port: 3000,
-  listener: https.createServer(options, function (req, res) {}),
-  tls: true
+  port: 80,
+  // port: 443,
+  // listener: https.createServer(options, function (req, res) {}),
+  // tls: true
 });
 
 server.route({
@@ -41,7 +42,7 @@ server.route({
         if (err){
           return reply(Hapi.error.internal('Internal MongoDB error', err));
         } else {
-          reply(doc);
+          reply({success: "Hello!!! yayayyyy"});
         }
       });
     },
@@ -59,7 +60,7 @@ server.route({
     method: 'GET',
     path: '/',
     handler: function (request, reply) {
-        reply('loc API v0.1\n');
+        reply({success: "loc v0.2 !!!!!"});
     }
 });
 
