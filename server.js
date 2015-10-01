@@ -5,9 +5,11 @@ var https = require('https');
 var http = require('http');
 var fs = require('fs');
 
+var locationsUtils = require('./locations');
+
 var options = {
-  key: fs.readFileSync('./intersect-key.pem'),
-  cert: fs.readFileSync('./intersect-cert.pem')
+  // key: fs.readFileSync('./intersect-key.pem'),
+  // cert: fs.readFileSync('./intersect-cert.pem')
 };
 
 var server = new Hapi.Server();
@@ -32,26 +34,18 @@ server.route({
 server.route({
   method: 'POST',
   path: '/locations',
-  handler: function (request, reply) {
-    console.log(request.payload);
-    var locations = request.payload.data;
-    var db = request.server.plugins['hapi-mongodb'].db;
-    db.collection('locations').insert(locations[0], { w: 1 }, function (err, doc){
-      if (err){
-        return reply({"error": Hapi.error.internal('Internal MongoDB error', err)});
-      } else {
-        // reply({"success": doc});
-        reply({
-          "processedLocations":[
-            {
-              "location":{"time":1420730570552,"longitude":"0.69","latitude":"-0.898989"},
-              "nearbyLocations": ["Jet30Vt2Ed","BjfUIB3dXO"]
-            }
-          ],
-          "success": doc
-        })
-      }
-    });
+
+  config: {
+    handler: function (request, reply) {
+      locationsUtils.handleLocationsRequest(request, reply);
+    },
+
+    validate: {
+      // payload: {
+        // id: joi.string().required(),
+        // note: joi.string().required()
+      // }
+    }
   }
 });
 
@@ -73,30 +67,18 @@ var dbOpts = {
   }
 };
 
-server.register([
-  {
+server.register({
     register: require('good'),
-    pluginOptions: {
-        reporters: [{
-            reporter: require('good-console'),
-            events: {
-                response: '*',
-                log: '*'
-            }
-        }]
-    }
-  },
-  {
-      register: require('hapi-mongodb'),
-      pluginOptions: dbOpts
-  }
-], function (err) {
+    options: options
+}, function (err) {
+
     if (err) {
         console.error(err);
-        throw err; // something bad happened loading the plugin
     }
+    else {
+        server.start(function () {
 
-    server.start(function () {
-        server.log('info', 'Server running at: ' + server.info.uri);
-    });
+            console.info('Server started at ' + server.info.uri);
+        });
+    }
 });
