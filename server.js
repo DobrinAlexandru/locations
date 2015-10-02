@@ -32,27 +32,26 @@ server.route({
 server.route({
   method: 'POST',
   path: '/locations',
-  config: {
-    handler: function (request, reply) {
-      var newLoc = {
-        id: request.payload.id
-      };
-      var db = request.server.plugins['hapi-mongodb'].db;
-      db.collection('locations').insert(newLoc, { w: 1 }, function (err, doc){
-        if (err){
-          return reply(Hapi.error.internal('Internal MongoDB error', err));
-        } else {
-          reply({"success": "Hello!!! yayayyyy"});
-        }
-      });
-    },
-
-    validate: {
-      payload: {
-        id: joi.string().required(),
-        // note: joi.string().required()
+  handler: function (request, reply) {
+    console.log(request.payload);
+    var locations = request.payload.data;
+    var db = request.server.plugins['hapi-mongodb'].db;
+    db.collection('locations').insert(locations[0], { w: 1 }, function (err, doc){
+      if (err){
+        return reply({"error": Hapi.error.internal('Internal MongoDB error', err)});
+      } else {
+        // reply({"success": doc});
+        reply({
+          "processedLocations":[
+            {
+              "location":{"time":1420730570552,"longitude":"0.69","latitude":"-0.898989"},
+              "nearbyLocations": ["Jet30Vt2Ed","BjfUIB3dXO"]
+            }
+          ],
+          "success": doc
+        })
       }
-    }
+    });
   }
 });
 
