@@ -112,7 +112,7 @@ var Locations = {
     }
   */
   getLocationsNearSingleLocation: function(location) {
-    var nearLocationQuery = ViewQuery.fromSpatial("dev_spatial", "location_space_time");
+    var nearLocationQuery = ViewQuery.fromSpatial("spatial", "location_space_time");
 
     var startRange = [location.latitude - BBOX_EDGE,
                       location.longitude - BBOX_EDGE,
