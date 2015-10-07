@@ -11,11 +11,13 @@
   "dependencies": {
     "bluebird": "^2.10.1",
     "couchbase": "^2.1.2",
+    "geolib": "^2.0.18",
     "good": "^6.4.0",
     "good-console": "^5.1.0",
     "hapi": "^10.0.0",
     "hapi-mongodb": "^3.0.0",
     "joi": "^6.7.1",
-    "node-uuid": "^1.4.3"
+    "node-uuid": "^1.4.3",
+    "underscore": "^1.8.3"
   }
 }
