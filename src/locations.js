@@ -22,6 +22,7 @@ var SEPARATOR = "::";
 
 var Locations = {
   handleLocationsRequest: function(request, reply) {
+    console.log(request.payload);
     var payload = JSON.parse(request.payload);
     var currentUserId = payload.user_id;
     var locations = payload.locations;
