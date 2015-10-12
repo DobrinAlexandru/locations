@@ -1,17 +1,17 @@
 function (doc, meta) {
     if (meta.type == "json") {
-      if(doc.doc_type && doc.doc_type == "Location") {
-        if (doc.user_id) {
+      if(doc.docType && doc.docType == "Location") {
+        if (doc.userId) {
           emit(
           [
             {
                "type": "Point",
                "coordinates": [doc.latitude, doc.longitude]
             },
-            [doc.time_start, doc.time_end],
+            [doc.timeStart, doc.timeEnd],
           ],
           {
-            object_id: meta.id,
+            objectId: meta.id,
           });
         }
       }

@@ -1,12 +1,15 @@
 var couchbase = require('couchbase');
 var cluster = new couchbase.Cluster('127.0.0.1');
-var bucket = cluster.openBucket('location');
+var locationBucket = cluster.openBucket('location');
+var coldStorageBucket = cluster.openBucket('cold_storage');
+
 var ViewQuery = couchbase.ViewQuery;
+
+var dbh = require('./db');
 
 var Promise = require("bluebird");
 var assert = require('assert');
 var _ = require('underscore');
-var uuid = require('node-uuid');
 var geolib = require('geolib');
 
 var LOCATION_DIFFERENCE = 50;
@@ -18,17 +21,21 @@ var TIME_OFFSET = 10 * 60000;
 var BBOX_EDGE = 0.001356545;  // 150m
 
 var USERID_TO_LOCID = "userid_to_locid";
-var SEPARATOR = "::";
+
+var EXPIRATION = {
+  expiry: 7 * 24 * 3600
+};
 
 var Locations = {
   handleLocationsRequest: function(request, reply) {
-    console.log(request.payload);
-    var payload = JSON.parse(request.payload);
-    var currentUserId = payload.user_id;
-    var locations = payload.locations;
+    // console.log(request.payload);
+    var currentUserId = request.payload.userId;
+    var locations = request.payload.locations;
 
-    this.processLocations(locations, currentUserId).bind(this).then(function(result) {
-        reply(result);
+    this.processLocations(locations, currentUserId).bind(this).then(function(locations) {
+        reply({
+          locations: locations
+        });
       }, function(error) {
         reply(error);
       });
@@ -59,6 +66,7 @@ var Locations = {
         return this.getLocationsNearLocations(locations);
       })
       .then(function(locationsNearLocations) {
+        console.log("near loc: " + JSON.stringify(locationsNearLocations));
         return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
       })
       .get(0);
@@ -69,12 +77,16 @@ var Locations = {
       return Promise.resolve([]);
     }
     // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
-    var saveLocationsPromise = this.saveListToDB(locations, "Location");
+    var saveLocationsPromise = dbh.saveListToDB(locations, "Location", EXPIRATION, locationBucket);
+
+    // Save locations to cold storage too
+    var coldSaveLocationsPromise = dbh.saveListToDB(locations, "Location", {}, coldStorageBucket);
+
     // Now we already assigned ids to locations objects, even though the list is not saved yet
     // So we can safely get the id of the last location
-    var lastLocationId = _.last(locations)["object_id"];
-    var savePointerToLastLocation = this.savePointerToDB(USERID_TO_LOCID + SEPARATOR + userId, lastLocationId);
-    return Promise.all(saveLocationsPromise, savePointerToLastLocation);
+    var lastLocationId = _.last(locations)["objectId"];
+    var savePointerToLastLocation = dbh.savePointerToDB(USERID_TO_LOCID, userId, lastLocationId, EXPIRATION, locationBucket);
+    return Promise.all(saveLocationsPromise, coldSaveLocationsPromise, savePointerToLastLocation);
   },
 
   /*
@@ -88,6 +100,7 @@ var Locations = {
   ]
   */
   getLocationsNearLocations: function(locations) {
+    // console.log(JSON.stringify(locations));
     if (locations.length === 0) {
       return Promise.resolve([]);
     }
@@ -117,32 +130,35 @@ var Locations = {
 
     var startRange = [location.latitude - BBOX_EDGE,
                       location.longitude - BBOX_EDGE,
-                      location.time_start - TIME_OFFSET];
+                      location.timeStart - TIME_OFFSET];
     var endRange = [location.latitude + BBOX_EDGE,
                     location.longitude + BBOX_EDGE,
-                    location.time_start + TIME_OFFSET];
+                    location.timeEnd + TIME_OFFSET];
     nearLocationQuery.custom({
       start_range: JSON.stringify(startRange),
       end_range: JSON.stringify(endRange),
     });
 
-    return new Promise(function(resolve, reject) {
-      bucket.query(nearLocationQuery, function(error, data, meta) {
-        var locationIds = _.map(data, function(location) {
+    return dbh.executeQuery(nearLocationQuery, locationBucket).bind(this).then(function(data) {
+      var locationIds = _.map(data, function(location) {
           return location.id;
-        });
-        var object = {location: location};
-        if (locationIds.length > 0) {
-          this.fetchMultiObjects(locationIds).bind(this).then(function(results) {
-            object.nearbyLocations = results;
-            resolve(object);
-          });
-        } else {
-          object.nearbyLocations = [];
-          resolve(object);
-        }
-      }.bind(this));
-    }.bind(this));
+      });
+      return dbh.fetchMultiObjects(locationIds, locationBucket);
+    }).then(function(nearbyLocations) {
+      // Remove nearby locations that belong to current user
+      nearbyLocations = this.filterLocationsFromCurrentUserId(nearbyLocations, location["userId"]);
+      var object = {
+        location: location,
+        nearbyLocations: nearbyLocations
+      };
+      return Promise.resolve(object);
+    });
+  },
+
+  filterLocationsFromCurrentUserId: function(locations, currentUserId) {
+    return _.filter(locations, function(location) {
+      return location["userId"] !== currentUserId;
+    });
   },
 
   mapLocationsToDBModel: function(locations, userId) {
@@ -150,98 +166,35 @@ var Locations = {
       return {
         latitude:       location["latitude"],
         longitude:      location["longitude"],
-        time_start:     location["time"],
-        time_end:       location["time"],
-        time_spent:     0,
-        user_id:        userId,
+        timeStart:      location["time"],
+        timeEnd:        location["time"],
+        timeSpent:      0,
+        accuracy:       location["accuracy"],
+        userId:         userId,
       };
     });
   },
 
-  saveListToDB: function(objects, className) {
-    var saveTasks = _.map(objects, function(object) {
-      return this.saveObjectToDB(object, className);
-    }.bind(this));
-    return Promise.settle(saveTasks);
-  },
-  saveObjectToDB: function(object, className) {
-    this.assignDBModelInfo(object, className);
-    return new Promise(function(resolve, reject) {
-      bucket.upsert(object["object_id"], object, {}, function(error, result) {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
-  },
-  savePointerToDB: function(key, toId) {
-    var object = {
-      object_id: key,
-      to_id: toId
-    };
-    return this.saveObjectToDB(object, "Pointer");
-  },
-  assignDBModelInfo: function(object, className) {
-    var key = object["object_id"] || uuid.v1();
-    object["object_id"] = key;
-    object["doc_type"] = className;
-  },
-
-  fetchMultiObjects: function(ids) {
-    return new Promise(function(resolve, reject) {
-      bucket.getMulti(ids, function(error, results) {
-        results = results || [];
-        // get array of values
-        var objects = _.map(results, function(result) {
-          return result.value;
-        });
-        // filter out null objects(couldn't be retrieved)
-        objects = _.filter(objects, function(object) {
-          return !!object;
-        });
-        resolve(objects);
-      });
-    });
-  },
-  fetchObject: function(id) {
-    return new Promise(function(resolve, reject) {
-      bucket.get(id, function(error, result) {
-        var object = result && result.value;
-        resolve(object);
-      });
-    });
-  },
-  fetchPointer: function(id) {
-    return this.fetchObject(id).bind(this).then(function(result) {
-      if (result) {
-        return this.fetchObject(result["to_id"] || "");
-      } else {
-        return Promise.resolve(null);
-      }
-    })
-  },
-
-
   compressLocations: function(locations, latestLocation) {
+    console.log("locs: " + JSON.stringify(locations.length));
+    console.log("last: " + JSON.stringify(latestLocation));
     var compressedLocations = [];
 
     if (locations.length === 0) {
       return compressedLocations;
     }
     if (latestLocation) {
-      locations = this.filterOlderLocations(locations, latestLocation["time_end"]);
+      locations = this.filterOlderLocations(locations, latestLocation["timeStart"]);
       if (locations.length === 0) {
         return compressedLocations;
       }
       // If previous location ends after the new location start, it means that the previous location had a bigger
-      // expiration than needed. In that case, we change previous location time_end so that it won't overlap with
+      // expiration than needed. In that case, we change previous location timeEnd so that it won't overlap with
       // the new location.
       var newLocation = _.first(locations);
-      if (latestLocation["time_end"] > newLocation["time_start"]) {
-        latestLocation["time_end"] = newLocation["time_start"];
-        latestLocation["time_spent"] = latestLocation["time_end"] - latestLocation["time_start"];
+      if (newLocation["timeStart"] < latestLocation["timeEnd"]) {
+        latestLocation["timeEnd"] = newLocation["timeStart"];
+        latestLocation["timeSpent"] = latestLocation["timeEnd"] - latestLocation["timeStart"];
       }
     } else {
       latestLocation = _.first(locations);
@@ -254,8 +207,8 @@ var Locations = {
 
       // If new location is almost the same as previous location => merge the new one into the previous one
       if (geolib.getDistance(newLocationPoint, latestLocationPoint) < LOCATION_DIFFERENCE) {
-        latestLocation["time_end"] = newLocation["time_end"];
-        latestLocation["time_spent"] = latestLocation["time_end"] - latestLocation["time_start"];
+        latestLocation["timeEnd"] = newLocation["timeEnd"];
+        latestLocation["timeSpent"] = latestLocation["timeEnd"] - latestLocation["timeStart"];
       } else {
         latestLocation = newLocation;
         compressedLocations.push(latestLocation);
@@ -265,25 +218,25 @@ var Locations = {
     // It's safe to supose that the user will stay here for the next x hours
     // until he uploads a new locaiton. In that case we'll shrink that time interval.
     // Add 2 hours offset to the latest location.
-    latestLocation["time_end"] = latestLocation["time_end"] + 2 * 3600000;
-    latestLocation["time_spent"] = latestLocation["time_spent"] + 2 * 3600000;
-
+    latestLocation["timeEnd"] = latestLocation["timeEnd"] + 2 * 3600000;
+    latestLocation["timeSpent"] = latestLocation["timeSpent"] + 2 * 3600000;
+    console.log("comp locs: " + JSON.stringify(compressedLocations.length));
     return compressedLocations;
   },
 
   fetchLatestLocation: function(userId) {
-    return this.fetchPointer(USERID_TO_LOCID + SEPARATOR + userId);
+    return dbh.fetchPointer(USERID_TO_LOCID, userId, locationBucket);
   },
 
   filterOlderLocations: function(locations, olderThan) {
     assert(olderThan === parseInt(olderThan, 10), "olderThan: expected integer");
     // Filter out old locations
     return _.filter(locations, function(location) {
-      var timeEnd = location["time_end"];
+      var timeStart = location["timeStart"];
 
-      assert(timeEnd === parseInt(timeEnd, 10), "timeEnd: expected integer");
+      assert(timeStart === parseInt(timeStart, 10), "timeStart: expected integer");
 
-      return !(timeEnd < olderThan);
+      return !(timeStart < olderThan);
     });
   },
 
@@ -299,18 +252,6 @@ var Locations = {
     // Sort locations by time
     return _.sortBy(locations, function(location) {
       return location["time"];
-    });
-  },
-
-  saveLocationsToMongo: function(locations) {
-    var newLoc = locations[0];
-    var db = request.server.plugins['hapi-mongodb'].db;
-    db.collection('locations').insert(newLoc, { w: 1 }, function (err, doc){
-      if (err){
-        return reply(Hapi.error.internal('Internal MongoDB error', err));
-      } else {
-        reply(doc);
-      }
     });
   },
 
