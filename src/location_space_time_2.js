@@ -4,11 +4,9 @@ function (doc, meta) {
         if (doc.userId) {
           emit(
           [
-            {
-               "type": "Point",
-               "coordinates": [doc.latitude, doc.longitude]
-            },
             [doc.timeStart, doc.timeEnd],
+            [doc.latitude, doc.latitude],
+            [doc.longitude, doc.longitude]
           ],
           {
             objectId: meta.id,

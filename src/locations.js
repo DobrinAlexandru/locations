@@ -8,7 +8,7 @@ var ViewQuery = couchbase.ViewQuery;
 var dbh = require('./db');
 
 var Promise = require("bluebird");
-var assert = require('assert');
+// var assert = require('assert');
 var _ = require('underscore');
 var geolib = require('geolib');
 
@@ -19,6 +19,7 @@ var TIME_OFFSET = 10 * 60000;
 // http://msi.nga.mil/MSISiteContent/StaticFiles/Calculators/degree.html
 // 1 degree = 110575m
 var BBOX_EDGE = 0.001356545;  // 150m
+// var BBOX_EDGE = 0.0007234908433;  // 80m
 
 var USERID_TO_LOCID = "userid_to_locid";
 
@@ -52,7 +53,7 @@ var Locations = {
   ]
   */
   processLocations: function(locations, currentUserId) {
-    locations = this.filterBadLocations(locations);
+    locations = this.filterAndFixBadLocations(locations);
     locations = this.sortLocations(locations);
     locations = this.mapLocationsToDBModel(locations, currentUserId);
     // return this.fetchLatestLocation(currentUserId).bind(this).then(function(latestLocation) {
@@ -64,6 +65,7 @@ var Locations = {
       })
       .then(function() {
         return this.getLocationsNearLocations(locations);
+        // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
         console.log("near loc: " + JSON.stringify(locationsNearLocations));
@@ -81,6 +83,7 @@ var Locations = {
 
     // Save locations to cold storage too
     var coldSaveLocationsPromise = dbh.saveListToDB(locations, "Location", {}, coldStorageBucket);
+    // var coldSaveLocationsPromise = Promise.resolve([]);
 
     // Now we already assigned ids to locations objects, even though the list is not saved yet
     // So we can safely get the id of the last location
@@ -119,13 +122,7 @@ var Locations = {
     });
   },
 
-  /* If promise is fulfilled, add {processed: true} to location
-    {
-      location: {},
-      nearbyLocations: []
-    }
-  */
-  getLocationsNearSingleLocation: function(location) {
+  getSpatialQuery1: function(location) {
     var nearLocationQuery = ViewQuery.fromSpatial("spatial", "location_space_time");
 
     var startRange = [location.latitude - BBOX_EDGE,
@@ -138,11 +135,39 @@ var Locations = {
       start_range: JSON.stringify(startRange),
       end_range: JSON.stringify(endRange),
     });
+    return nearLocationQuery;
+  },
+
+  // getSpatialQuery2: function(location) {
+  //   var nearLocationQuery = ViewQuery.fromSpatial("spatial", "location_space_time2");
+
+  //   var startRange = [location.timeStart - TIME_OFFSET,
+  //                     location.latitude - BBOX_EDGE,
+  //                     location.longitude - BBOX_EDGE];
+  //   var endRange = [location.timeEnd + TIME_OFFSET,
+  //                   location.latitude + BBOX_EDGE,
+  //                   location.longitude + BBOX_EDGE];
+  //   nearLocationQuery.custom({
+  //     start_range: JSON.stringify(startRange),
+  //     end_range: JSON.stringify(endRange),
+  //   });
+  //   return nearLocationQuery;
+  // },
+
+  /* If promise is fulfilled, add {processed: true} to location
+    {
+      location: {},
+      nearbyLocations: []
+    }
+  */
+  getLocationsNearSingleLocation: function(location) {
+    var nearLocationQuery = this.getSpatialQuery1(location);
 
     return dbh.executeQuery(nearLocationQuery, locationBucket).bind(this).then(function(data) {
       var locationIds = _.map(data, function(location) {
           return location.id;
       });
+      // locationIds = [];
       return dbh.fetchMultiObjects(locationIds, locationBucket);
     }).then(function(nearbyLocations) {
       // Remove nearby locations that belong to current user
@@ -229,22 +254,27 @@ var Locations = {
   },
 
   filterOlderLocations: function(locations, olderThan) {
-    assert(olderThan === parseInt(olderThan, 10), "olderThan: expected integer");
     // Filter out old locations
     return _.filter(locations, function(location) {
       var timeStart = location["timeStart"];
-
-      assert(timeStart === parseInt(timeStart, 10), "timeStart: expected integer");
-
       return !(timeStart < olderThan);
     });
   },
 
-  filterBadLocations: function(locations) {
+  filterAndFixBadLocations: function(locations) {
     // Filter out bad locations
     return _.filter(locations, function(location) {
       var latitude = location["latitude"];
       var longitude = location["longitude"];
+
+      // Fix time issues
+      if (!location["time"]) {
+        // If location doesn't have a time, set current time
+        location["time"] = Date.now();
+      } else if (location["time"] > Date.now() + 3600000) {
+        // If locations is more than 1 hour into the future, set current time
+        location["time"] = Date.now();
+      }
       return -90 < latitude && latitude < 90 && -90 < longitude && longitude < 90;
     });
   },
