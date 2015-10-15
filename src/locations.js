@@ -24,7 +24,7 @@ var BBOX_EDGE = 0.001356545;  // 150m
 var USERID_TO_LOCID = "userid_to_locid";
 
 var EXPIRATION = {
-  expiry: 7 * 24 * 3600
+  expiry: 2 * 24 * 3600
 };
 
 var Locations = {
@@ -68,7 +68,7 @@ var Locations = {
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
-        console.log("near loc: " + JSON.stringify(locationsNearLocations));
+        console.log("near loc: " + locationsNearLocations.length);
         return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
       })
       .get(0);
@@ -171,7 +171,9 @@ var Locations = {
       return dbh.fetchMultiObjects(locationIds, locationBucket);
     }).then(function(nearbyLocations) {
       // Remove nearby locations that belong to current user
+      console.log("nearby before: " + nearbyLocations.length);
       nearbyLocations = this.filterLocationsFromCurrentUserId(nearbyLocations, location["userId"]);
+      console.log("nearby after: " + nearbyLocations.length);
       var object = {
         location: location,
         nearbyLocations: nearbyLocations
@@ -202,7 +204,7 @@ var Locations = {
 
   compressLocations: function(locations, latestLocation) {
     console.log("locs: " + JSON.stringify(locations.length));
-    console.log("last: " + JSON.stringify(latestLocation));
+    console.log("last: " + latestLocation);
     var compressedLocations = [];
 
     if (locations.length === 0) {
@@ -245,7 +247,7 @@ var Locations = {
     // Add 2 hours offset to the latest location.
     latestLocation["timeEnd"] = latestLocation["timeEnd"] + 2 * 3600000;
     latestLocation["timeSpent"] = latestLocation["timeSpent"] + 2 * 3600000;
-    console.log("comp locs: " + JSON.stringify(compressedLocations.length));
+    console.log("comp locs: " + compressedLocations.length);
     return compressedLocations;
   },
 
