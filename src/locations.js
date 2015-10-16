@@ -42,6 +42,41 @@ var Locations = {
       });
   },
 
+  getLocationsForUser: function(request, reply) {
+    var userId = request.query.userId;
+    var timeStart = request.query.timeStart;
+    var timeEnd = request.query.timeEnd;
+    var pw = request.query.pw;
+    
+    // Verify pw
+    if (pw !== "4loc4") {
+      reply({locations: []});
+      return ;
+    }
+
+    this.getLocationsForUserBetweenDates(userId, timeStart, timeEnd).bind(this).then(function(locations) {
+      reply({
+        locations: locations
+      });
+    }, function(error) {
+      reply(error);
+    });
+  },
+
+  getLocationsForUserBetweenDates: function(userId, timeStart, timeEnd) {
+    var locationsForUserQuery = this.getLocationsForUserQuery(userId, timeStart, timeEnd);
+
+    return dbh.executeQuery(locationsForUserQuery, coldStorageBucket).bind(this).then(function(data) {
+      var locationIds = _.pluck(data, "id");
+      // locationIds = [];
+      return dbh.fetchMultiObjects(locationIds, coldStorageBucket);
+    }).then(function(locations) {
+      locations = _.sortBy(locations, "timeStart");
+      locations.reverse();
+      return Promise.resolve(locations);
+    });
+  },
+
   /*
   [
     {
@@ -54,7 +89,7 @@ var Locations = {
   */
   processLocations: function(locations, currentUserId) {
     locations = this.filterAndFixBadLocations(locations);
-    locations = this.sortLocations(locations);
+    locations = _.sortBy(locations, "time");
     locations = this.mapLocationsToDBModel(locations, currentUserId);
     // return this.fetchLatestLocation(currentUserId).bind(this).then(function(latestLocation) {
     //   return this.getLocationsNearSingleLocation(latestLocation);
@@ -120,6 +155,20 @@ var Locations = {
       });
       return Promise.resolve(locationsNearLocations);
     });
+  },
+
+  getLocationsForUserQuery: function(userId, timeStart, timeEnd) {
+    var locationsForUserQuery = ViewQuery.from("locations", "location_by_userid");
+
+    var startkey = '["' + userId + '", ' + timeStart + ']';
+    var endkey = '["' + userId + '", ' + timeEnd + ']';
+
+    locationsForUserQuery.custom({
+      startkey: startkey,
+      endkey: endkey,
+    });
+    console.log("xxx: " + JSON.stringify(locationsForUserQuery));
+    return locationsForUserQuery;
   },
 
   getSpatialQuery1: function(location) {
@@ -280,13 +329,6 @@ var Locations = {
       return -90 < latitude && latitude < 90 && -90 < longitude && longitude < 90;
     });
   },
-  sortLocations: function(locations) {
-    // Sort locations by time
-    return _.sortBy(locations, function(location) {
-      return location["time"];
-    });
-  },
-
 };
 
 module.exports = Locations;

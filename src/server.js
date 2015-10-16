@@ -39,21 +39,15 @@ server.route({
     handler: function (request, reply) {
       locationsUtils.handleLocationsRequest(request, reply);
     },
-
-    validate: {
-      // payload: {
-        // id: joi.string().required(),
-        // note: joi.string().required()
-      // }
-    }
   }
 });
 
 server.route({
     method: 'GET',
-    path: '/',
+    path: '/userLocations',
     handler: function (request, reply) {
-        reply({success: "loc v0.3 !!!!!"});
+        console.log("xx: " + JSON.stringify(request.query));
+        locationsUtils.getLocationsForUser(request, reply);
     }
 });
 
