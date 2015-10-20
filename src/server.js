@@ -34,20 +34,22 @@ server.route({
 server.route({
   method: 'POST',
   path: '/locations',
-
   config: {
     handler: function (request, reply) {
       locationsUtils.handleLocationsRequest(request, reply);
-    },
+    }
   }
 });
 
 server.route({
     method: 'GET',
     path: '/userLocations',
-    handler: function (request, reply) {
+    config: {
+      handler: function (request, reply) {
         console.log("xx: " + JSON.stringify(request.query));
         locationsUtils.getLocationsForUser(request, reply);
+      },
+      cors: true
     }
 });
 

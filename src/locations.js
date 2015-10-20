@@ -24,8 +24,11 @@ var BBOX_EDGE = 0.001356545;  // 150m
 var USERID_TO_LOCID = "userid_to_locid";
 
 var EXPIRATION = {
-  expiry: 2 * 24 * 3600
+  expiry: 12 * 3600
 };
+
+var EXPIRATION_TIME_OFFSET = EXPIRATION.expiry * 1000 - TIME_OFFSET;
+
 
 var Locations = {
   handleLocationsRequest: function(request, reply) {
@@ -123,7 +126,7 @@ var Locations = {
     // Now we already assigned ids to locations objects, even though the list is not saved yet
     // So we can safely get the id of the last location
     var lastLocationId = _.last(locations)["objectId"];
-    var savePointerToLastLocation = dbh.savePointerToDB(USERID_TO_LOCID, userId, lastLocationId, EXPIRATION, locationBucket);
+    var savePointerToLastLocation = dbh.savePointerToDB(USERID_TO_LOCID, userId, lastLocationId, {}, coldStorageBucket);
     return Promise.all(saveLocationsPromise, coldSaveLocationsPromise, savePointerToLastLocation);
   },
 
@@ -143,7 +146,9 @@ var Locations = {
       return Promise.resolve([]);
     }
     var tasks = _.map(locations, function(location) {
-      return this.getLocationsNearSingleLocation(location);
+      // Check if location should be queried from the small or larger bucket
+      var bucket = (location.timeStart > Date.now() - EXPIRATION_TIME_OFFSET) ? locationBucket : coldStorageBucket;
+      return this.getLocationsNearSingleLocation(location, bucket);
     }.bind(this));
 
     return Promise.settle(tasks).bind(this).then(function(results) {
@@ -154,6 +159,35 @@ var Locations = {
         }
       });
       return Promise.resolve(locationsNearLocations);
+    });
+  },
+
+  /* If promise is fulfilled, add {processed: true} to location
+    {
+      location: {},
+      nearbyLocations: []
+    }
+  */
+  getLocationsNearSingleLocation: function(location, bucket) {
+    var nearLocationQuery = this.getSpatialQuery1(location);
+
+    return dbh.executeQuery(nearLocationQuery, bucket).bind(this).then(function(data) {
+      var locationIds = _.map(data, function(location) {
+          return location.id;
+      });
+      // locationIds = [];
+      return dbh.fetchMultiObjects(locationIds, bucket);
+    }).then(function(nearbyLocations) {
+      // Remove nearby locations that belong to current user
+      console.log("nearby before: " + nearbyLocations.length);
+      // TODO Move this filter before fetching objects
+      nearbyLocations = this.filterLocationsFromCurrentUserId(nearbyLocations, location["userId"]);
+      console.log("nearby after: " + nearbyLocations.length);
+      var object = {
+        location: location,
+        nearbyLocations: nearbyLocations
+      };
+      return Promise.resolve(object);
     });
   },
 
@@ -202,34 +236,6 @@ var Locations = {
   //   });
   //   return nearLocationQuery;
   // },
-
-  /* If promise is fulfilled, add {processed: true} to location
-    {
-      location: {},
-      nearbyLocations: []
-    }
-  */
-  getLocationsNearSingleLocation: function(location) {
-    var nearLocationQuery = this.getSpatialQuery1(location);
-
-    return dbh.executeQuery(nearLocationQuery, locationBucket).bind(this).then(function(data) {
-      var locationIds = _.map(data, function(location) {
-          return location.id;
-      });
-      // locationIds = [];
-      return dbh.fetchMultiObjects(locationIds, locationBucket);
-    }).then(function(nearbyLocations) {
-      // Remove nearby locations that belong to current user
-      console.log("nearby before: " + nearbyLocations.length);
-      nearbyLocations = this.filterLocationsFromCurrentUserId(nearbyLocations, location["userId"]);
-      console.log("nearby after: " + nearbyLocations.length);
-      var object = {
-        location: location,
-        nearbyLocations: nearbyLocations
-      };
-      return Promise.resolve(object);
-    });
-  },
 
   filterLocationsFromCurrentUserId: function(locations, currentUserId) {
     return _.filter(locations, function(location) {
@@ -301,7 +307,7 @@ var Locations = {
   },
 
   fetchLatestLocation: function(userId) {
-    return dbh.fetchPointer(USERID_TO_LOCID, userId, locationBucket);
+    return dbh.fetchPointer(USERID_TO_LOCID, userId, coldStorageBucket);
   },
 
   filterOlderLocations: function(locations, olderThan) {
