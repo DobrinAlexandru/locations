@@ -6,10 +6,7 @@ function (doc, meta) {
           [
             doc.userId,
             doc.timeStart
-          ],
-          {
-            objectId: meta.id,
-          });
+          ], null);
         }
       }
     }

@@ -97,15 +97,19 @@ var Locations = {
     // return this.fetchLatestLocation(currentUserId).bind(this).then(function(latestLocation) {
     //   return this.getLocationsNearSingleLocation(latestLocation);
     // });
+    var timerStart = Date.now();
     return this.fetchLatestLocation(currentUserId).bind(this).then(function(latestLocation) {
+        console.log("X fetch latest time: " + (Date.now() - timerStart));
         locations = this.compressLocations(locations, latestLocation);
         return Promise.resolve();
       })
       .then(function() {
+        timerStart = Date.now();
         return this.getLocationsNearLocations(locations);
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
+        console.log("X locations nearby time: " + (Date.now() - timerStart));
         console.log("near loc: " + locationsNearLocations.length);
         return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
       })
@@ -113,6 +117,7 @@ var Locations = {
   },
 
   saveLocations: function(locations, userId) {
+    var timerStart = Date.now();
     if (locations.length === 0) {
       return Promise.resolve([]);
     }
@@ -127,7 +132,11 @@ var Locations = {
     // So we can safely get the id of the last location
     var lastLocationId = _.last(locations)["objectId"];
     var savePointerToLastLocation = dbh.savePointerToDB(USERID_TO_LOCID, userId, lastLocationId, {}, coldStorageBucket);
-    return Promise.all(saveLocationsPromise, coldSaveLocationsPromise, savePointerToLastLocation);
+    return Promise.all(saveLocationsPromise, coldSaveLocationsPromise, savePointerToLastLocation)
+      .then(function(result) {
+        console.log("X save time: " + (Date.now() - timerStart));
+        return Promise.resolve(result);
+      });
   },
 
   /*
@@ -169,15 +178,22 @@ var Locations = {
     }
   */
   getLocationsNearSingleLocation: function(location, bucket) {
-    var nearLocationQuery = this.getSpatialQuery1(location);
+    var nearLocationQuery = this.getSpatialQuery1(location, false);//(bucket === coldStorageBucket));
 
+    var timerStart = Date.now();
     return dbh.executeQuery(nearLocationQuery, bucket).bind(this).then(function(data) {
+      console.log("X query time: " + (Date.now() - timerStart));
+      console.log("bucket: " + ((bucket === locationBucket) ? "location" : "cold")); 
+      // console.log("X query meta: " + JSON.stringify(data));
+
       var locationIds = _.map(data, function(location) {
           return location.id;
       });
       // locationIds = [];
+      timerStart = Date.now();
       return dbh.fetchMultiObjects(locationIds, bucket);
     }).then(function(nearbyLocations) {
+      console.log("X multiple time: " + (Date.now() - timerStart));
       // Remove nearby locations that belong to current user
       console.log("nearby before: " + nearbyLocations.length);
       // TODO Move this filter before fetching objects
@@ -205,7 +221,7 @@ var Locations = {
     return locationsForUserQuery;
   },
 
-  getSpatialQuery1: function(location) {
+  getSpatialQuery1: function(location, staleNone) {
     var nearLocationQuery = ViewQuery.fromSpatial("spatial", "location_space_time");
 
     var startRange = [location.latitude - BBOX_EDGE,
@@ -218,6 +234,9 @@ var Locations = {
       start_range: JSON.stringify(startRange),
       end_range: JSON.stringify(endRange),
     });
+    if (staleNone) {
+      nearLocationQuery.stale(ViewQuery.Update.NONE);
+    }
     return nearLocationQuery;
   },
 

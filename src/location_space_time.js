@@ -9,10 +9,7 @@ function (doc, meta) {
                "coordinates": [doc.latitude, doc.longitude]
             },
             [doc.timeStart, doc.timeEnd],
-          ],
-          {
-            objectId: meta.id,
-          });
+          ], null);
         }
       }
     }
