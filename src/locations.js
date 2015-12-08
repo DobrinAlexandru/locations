@@ -94,9 +94,7 @@ var Locations = {
     locations = this.filterAndFixBadLocations(locations);
     locations = _.sortBy(locations, "time");
     locations = this.mapLocationsToDBModel(locations, currentUserId);
-    // return this.fetchLatestLocation(currentUserId).bind(this).then(function(latestLocation) {
-    //   return this.getLocationsNearSingleLocation(latestLocation);
-    // });
+    
     var timerStart = Date.now();
     return this.fetchLatestLocation(currentUserId).bind(this).then(function(latestLocation) {
         console.log("X fetch latest time: " + (Date.now() - timerStart));
