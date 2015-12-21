@@ -3,88 +3,172 @@ var Promise = require("bluebird");
 var uuid = require('node-uuid');
 
 var SEPARATOR = "::";
+// The length of the bounding box half edge(radius) in degrees
+// http://msi.nga.mil/MSISiteContent/StaticFiles/Calculators/degree.html
+// 1 degree = 110575m
+var BBOX_EDGE = 0.001356545;  // 150m
+// 10 minutes overlap to consider that two locations intersect in time
+var TIME_OFFSET = 10 * 60000;
+// Time interval we search for should not expand more than 1day before & after location time
+var TIME_BOUND = 24 * 3600000;
+
+var elasticsearch = require('elasticsearch');
+var client = new elasticsearch.Client({
+  host: 'localhost:9200',
+  // log: 'trace'
+  log : [{
+    type: 'stdio',
+    levels: ['error', 'warning'] // change these options
+  }]
+});
 
 var db = {
-  saveListToDB: function(objects, className, options, bucket) {
+  saveListToDB: function(objects) {
     var saveTasks = _.map(objects, function(object) {
-      return db.saveObjectToDB(object, className, options, bucket);
+      return db.saveObjectToDB(object);
     }.bind(this));
     return Promise.settle(saveTasks);
   },
-  saveObjectToDB: function(object, className, options, bucket) {
-    options = options || {};
-    this.assignDBModelInfo(object, className);
-    return new Promise(function(resolve, reject) {
-      bucket.upsert(object["objectId"], object, options, function(error, result) {
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
-        }
-      });
-    });
+  saveObjectToDB: function(object) {
+    return Promise.resolve(client.index({
+      index: object._index,
+      type: object._type,
+      id: object._id,
+      body: object._source
+    }));
   },
 
-  savePointerToDB: function(pointerType, fromId, toId, options, bucket) {
+  savePointerToDB: function(pointerType, fromId, id, index, type) {
     var object = {
-      objectId: pointerType + SEPARATOR + fromId,
-      toId: toId
+      _index: "pointers",
+      _type: pointerType,
+      _id: fromId,
+      _source: {
+        index: index,
+        type: type,
+        id: id
+      }
     };
-    return this.saveObjectToDB(object, "Pointer", options, bucket);
-  },
-  assignDBModelInfo: function(object, className) {
-    if (!object["objectId"]) {
-      object["objectId"] = uuid.v1();
-    }
-    object["docType"] = className;
+    return this.saveObjectToDB(object);
   },
 
-  fetchMultiObjects: function(ids, bucket) {
-    return new Promise(function(resolve, reject) {
-      if (ids.length === 0) {
-        // otherwise, bucket.getMulti will throw an exception
-        resolve([]);
-      } else {
-        bucket.getMulti(ids, function(error, results) {
-          results = results || [];
-          // get array of values
-          var objects = _.map(results, function(result) {
-            return result.value;
-          });
-          // filter out null objects(couldn't be retrieved)
-          objects = _.filter(objects, function(object) {
-            return !!object;
-          });
-          resolve(objects);
-        });
+  fetchMultiObjects: function(ids, index, type) {
+    return this.fetchMulti({
+      index: index,
+      type: type,
+      body: {
+        ids: ids
       }
     });
   },
-  fetchObject: function(id, bucket) {
-    return new Promise(function(resolve, reject) {
-      bucket.get(id, function(error, result) {
-        var object = result && result.value;
-        resolve(object);
-      });
+  fetchObject: function(id, index, type) {
+    return this.fetch({
+      index: index,
+      type: type,
+      id: id
     });
   },
-  fetchPointer: function(pointerType, fromId, bucket) {
-    var id = pointerType + SEPARATOR + fromId;
-    return this.fetchObject(id, bucket).bind(this).then(function(result) {
-      if (result) {
-        return this.fetchObject(result["toId"] || "", bucket);
-      } else {
-        return Promise.resolve(null);
+  fetchMulti: function(params) {
+    params = _.extend(params, {
+      ignore: [404]
+    });
+    return Promise.resolve(client.mget(params));
+  },
+  fetch: function(params) {
+    params = _.extend(params, {
+      ignore: [404]
+    });
+    return Promise.resolve(client.get(params));
+  },
+  fetchPointer: function(pointerType, fromId) {
+    return this.fetch({
+      index: "pointers",
+      type: pointerType,
+      id: fromId
+    }).bind(this).then(function(pointer) {
+      console.log("pointer yes");
+      return pointer._source ? this.fetch(pointer._source) : Promise.resolve({});
+    }, function(error) {
+      console.log("pointer no" + JSON.stringify(error));
+      return Promise.reject(error);
+    });
+  },
+  getLocationsForUserQuery: function(userId, timeStart, timeEnd) {
+    return Promise.resolve(client.search({
+      index: "locations",
+      type: "location",
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                      "must": [
+                          {"range": {
+                              "timeStart": {
+                                  "gt": timeStart,
+                                  "lt": timeEnd
+                              }
+                          }},
+                          {"term": {
+                              "userId": userId
+                          }}
+                      ]
+                  }
+              }
+          }
+        }
       }
-    });
+    }));
   },
-  executeQuery: function(query, bucket) {
-    return new Promise(function(resolve, reject) {
-      bucket.query(query, function(error, data, meta) {
-        resolve(data);
-      });
-    });
-  },
-};
+  getLocationsNearSingleLocation: function(location, excludeUserId) {
+    return Promise.resolve(client.search({
+      index: "locations",
+      type: "location",
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                      "must": [
+                          {"geo_bounding_box": {
+                            "type":    "indexed",
+                            "location": { 
+                                  "top_left": {
+                                    "lat": location._source.location.lat + BBOX_EDGE,
+                                    "lon": location._source.location.lon - BBOX_EDGE
+                                  },
+                                  "bottom_right": {
+                                    "lat":  location._source.location.lat - BBOX_EDGE,
+                                    "lon": location._source.location.lon + BBOX_EDGE
+                                  }
+                            }
+                          }},
+                          {"range": {
+                              "timeEnd": {
+                                  "gt":  location._source.timeStart - TIME_OFFSET,
+                                  "lt":   Math.min(Date.now(), location._source.timeStart + TIME_BOUND)
+                              }
+                          }},
+                          {"range": {
+                              "timeStart": {
+                                  "gt":  location._source.timeEnd - TIME_BOUND,
+                                  "lt":   location._source.timeEnd + TIME_OFFSET
+                              }
+                          }}
+                      ],
+                      "must_not": {
+                          "term": {
+                              "userId": excludeUserId
+                          }
+                      }
+                  }
+              }
+          }
+        }
+      }
+    }));
+  }
+}
+
 
 module.exports = db;
