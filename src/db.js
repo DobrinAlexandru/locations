@@ -61,22 +61,18 @@ var db = {
       }
     });
   },
-  fetchObject: function(id, index, type) {
-    return this.fetch({
-      index: index,
-      type: type,
-      id: id
-    });
-  },
+  
   fetchMulti: function(params) {
     params = _.extend(params, {
-      ignore: [404]
+      ignore: [404],
+      size: 100,
     });
     return Promise.resolve(client.mget(params));
   },
   fetch: function(params) {
     params = _.extend(params, {
-      ignore: [404]
+      ignore: [404],
+      size: 100,
     });
     return Promise.resolve(client.get(params));
   },
@@ -97,6 +93,7 @@ var db = {
     return Promise.resolve(client.search({
       index: "locations",
       type: "location",
+      size: 100,
       body: {
         "query": {
           "filtered" : {
@@ -124,6 +121,7 @@ var db = {
     return Promise.resolve(client.search({
       index: "locations",
       type: "location",
+      size: 100,
       body: {
         "query": {
           "filtered" : {
@@ -146,7 +144,7 @@ var db = {
                           {"range": {
                               "timeEnd": {
                                   "gt":  location._source.timeStart - TIME_OFFSET,
-                                  "lt":   Math.min(Date.now(), location._source.timeStart + TIME_BOUND)
+                                  "lt":   Math.min(Date.now() + TIME_BOUND, location._source.timeStart + TIME_BOUND)
                               }
                           }},
                           {"range": {
