@@ -17,6 +17,7 @@
     "joi": "^6.7.1",
     "node-uuid": "^1.4.3",
     "underscore": "^1.8.3",
-    "elasticsearch": "*"
+    "elasticsearch": "*",
+    "request": "*"
   }
 }

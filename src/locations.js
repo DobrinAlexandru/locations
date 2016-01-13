@@ -10,57 +10,22 @@ var LOCATION_DIFFERENCE = 50;
 var USERID_TO_LOCID = "useridToLocid";
 
 var Locations = {
-  handleLocationsRequest: function(request, reply) {
-    var timerStart = Date.now();
-    var currentUserId = request.payload.userId;
-    var locations = request.payload.locations;
-    
-    // if (currentUserId !== "EIxcvQA5J6") {
-    //   return;
-    // }
-    console.log("\n--- START --- " + currentUserId);
-
-    this.processLocations(locations, currentUserId).bind(this).then(function(locations) {
-        console.log("process: finished");
-        var output = _.map(locations, function(pair) {
-          return {
-            location: this.getLocationFromDbModel(pair.location),
-            nearbyLocations: _.map(pair.nearbyLocations, function(location) {
-              return this.getLocationFromDbModel(location);
-            }.bind(this))
-          }
-        }.bind(this));
-        console.log("TIME total: " + (Date.now() - timerStart));
-        console.log("--- END --- ok");
-        reply({
-          locations: output
-        });
-      }, function(error) {
-        console.log("TIME total: " + (Date.now() - timerStart));
-        console.log("--- END --- error" + JSON.stringify(error));
-        reply(error);
-      });
+  handleLocationsRequest: function(payload) {
+    return this.processLocations(payload.locations, payload.userId, payload.radius).bind(this);
   },
 
-  getLocationsForUser: function(request, reply) {
-    var userId = request.query.userId;
-    var timeStart = request.query.timeStart;
-    var timeEnd = request.query.timeEnd;
-    var pw = request.query.pw;
-    
+  getLocationsForUser: function(payload) {
     // Verify pw
-    if (pw !== "4loc4") {
+    if (payload.pw !== "4loc4") {
       reply({locations: []});
       return ;
     }
-
-    this.getLocationsForUserBetweenDates(userId, timeStart, timeEnd).bind(this).then(function(locations) {
-      reply({
-        locations: locations
+    return this.getLocationsForUserBetweenDates(payload.userId, payload.timeStart, payload.timeEnd).bind(this)
+      .then(function(locations) {
+        return Promise.resolve({
+          locations: locations
+        });
       });
-    }, function(error) {
-      reply(error);
-    });
   },
 
   getLocationsForUserBetweenDates: function(userId, timeStart, timeEnd) {
@@ -85,7 +50,7 @@ var Locations = {
     ...
   ]
   */
-  processLocations: function(locations, currentUserId) {
+  processLocations: function(locations, currentUserId, radius) {
     locations = this.filterAndFixBadLocations(locations);
     locations = _.sortBy(locations, "time");
     locations = this.mapLocationsToDBModel(locations, currentUserId);
@@ -100,12 +65,13 @@ var Locations = {
       })
       .then(function() {
         timerStart = Date.now();
-        return this.getLocationsNearLocations(locations, currentUserId);
+        return this.getLocationsNearLocations(locations, currentUserId, radius);
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
         console.log("TIME locations nearby: " + (Date.now() - timerStart));
         console.log("near loc: " + locationsNearLocations.length);
+        // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
         return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
       })
       .get(0);
@@ -116,17 +82,19 @@ var Locations = {
     if (locations.length === 0) {
       return Promise.resolve([]);
     }
-    // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
-    var saveLocationsPromise = dbh.saveListToDB(locations);
 
-    // Now we already assigned ids to locations objects, even though the list is not saved yet
-    // So we can safely get the id of the last location
-    var lastLocationId = _.last(locations)._id;
-    var savePointerToLastLocation = dbh.savePointerToDB(USERID_TO_LOCID, userId, lastLocationId, "locations", "location");
-    return Promise.all(saveLocationsPromise, savePointerToLastLocation)
-      .then(function(result) {
+    // We assign CUSTOM ID only to the LAST LOCATION. We let elasticsearch to provide ids to the others
+    // We need this in order to do locations saving and pointer saving in paralel.
+    var lastLocation = _.last(locations);
+    var lastLocationId = lastLocation._id = uuid.v1();
+    // Create pointer to last user location
+    var pointerToLastUserLocation = dbh.createPointerObject(USERID_TO_LOCID, userId, lastLocationId, "locations", "location");
+    // Attach to list of objects and save in bulk
+    locations.push(pointerToLastUserLocation);
+
+    return dbh.saveListToDB(locations).then(function(result) {
         console.log("TIME save: " + (Date.now() - timerStart));
-        return Promise.resolve(result);
+        return Promise.resolve([]);
       });
   },
 
@@ -140,13 +108,13 @@ var Locations = {
     ...
   ]
   */
-  getLocationsNearLocations: function(locations, currentUserId) {
+  getLocationsNearLocations: function(locations, currentUserId, radius) {
     // console.log(JSON.stringify(locations));
     if (locations.length === 0) {
       return Promise.resolve([]);
     }
     var tasks = _.map(locations, function(location) {
-      return this.getLocationsNearSingleLocation(location, currentUserId);
+      return this.getLocationsNearSingleLocation(location, currentUserId, radius);
     }.bind(this));
 
     return Promise.settle(tasks).bind(this).then(function(results) {
@@ -155,7 +123,10 @@ var Locations = {
         if (result.isFulfilled()) {
           var pair = result.value();
           pair.location._source.processed = true;
-          locationsNearLocations.push(pair);
+          // Push only the locations that have locations nearby
+          if (pair.nearbyLocations.length > 0) {
+            locationsNearLocations.push(pair);
+          }
         }
       });
       return Promise.resolve(locationsNearLocations);
@@ -168,15 +139,11 @@ var Locations = {
       nearbyLocations: []
     }
   */
-  getLocationsNearSingleLocation: function(location, currentUserId) {
+  getLocationsNearSingleLocation: function(location, currentUserId, radius) {
     var timerStart = Date.now();
-    return dbh.getLocationsNearSingleLocation(location, currentUserId).then(function(nearbyLocations) {
+    return dbh.getLocationsNearSingleLocation(location, currentUserId, radius).then(function(nearbyLocations) {
       console.log("TIME multiple: " + (Date.now() - timerStart));
-      // Remove nearby locations that belong to current user
       console.log("nearby: " + JSON.stringify(nearbyLocations.hits.hits.length));
-      // TODO Move this filter before fetching objects
-      // nearbyLocations = this.filterLocationsFromCurrentUserId(nearbyLocations, location._source.userId);
-      // console.log("nearby after: " + nearbyLocations.length);
       var object = {
         location: location,
         nearbyLocations: nearbyLocations.hits.hits
@@ -185,18 +152,12 @@ var Locations = {
     });
   },
 
-  filterLocationsFromCurrentUserId: function(locations, currentUserId) {
-    return _.filter(locations, function(location) {
-      return location["userId"] !== currentUserId;
-    });
-  },
-
   mapLocationsToDBModel: function(locations, userId) {
     return _.map(locations, function(location) {
       return {
         _index: "locations",
         _type: "location",
-        _id: uuid.v1(),
+        // _id: uuid.v1(),
         _source: {
           location: {
             lat: location["latitude"],
@@ -260,7 +221,7 @@ var Locations = {
     });
 
     // It's safe to supose that the user will stay here for the next x hours
-    // until he uploads a new locaiton. In that case we'll shrink that time interval.
+    // until he uploads a new location. In that case we'll shrink that time interval.
     // Add 2 hours offset to the latest location.
     latestLocation._source.timeEnd = latestLocation._source.timeEnd + 2 * 3600000;
     latestLocation._source.timeSpent = latestLocation._source.timeSpent + 2 * 3600000;

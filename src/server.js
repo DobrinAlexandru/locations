@@ -1,46 +1,55 @@
 var Hapi = require('hapi');
-var joi = require('joi');
 
-var https = require('https');
-var http = require('http');
-var fs = require('fs');
+var apiUtils = require('./api');
 
-var locationsUtils = require('./locations');
+var _ = require('underscore');
+var Promise = require("bluebird");
 
 var options = {
-  // key: fs.readFileSync('./intersect-key.pem'),
-  // cert: fs.readFileSync('./intersect-cert.pem')
 };
 
 var server = new Hapi.Server();
 server.connection({
   port: 8001,
-  // port: 443,
-  // listener: https.createServer(options, function (req, res) {}),
-  // tls: true
 });
 
-server.route({
-  method: 'POST',
-  path: '/locations',
-  config: {
-    handler: function (request, reply) {
-      locationsUtils.handleLocationsRequest(request, reply);
-    }
-  }
-});
+var postApis = {
+  "/locations":         "locations",
+  "/api/locations":     "apiLocations",
+  "/api/updateBumps":   "apiUpdateBumps",
+  "/api/loadNewsFeed":  "apiLoadNewsFeed",
+  "/api/updateUser":    "apiUpdateUser",
+  "/api/test":          "apiTest"
+};
 
-server.route({
-    method: 'GET',
-    path: '/userLocations',
-    config: {
-      handler: function (request, reply) {
-        console.log("xx: " + JSON.stringify(request.query));
-        locationsUtils.getLocationsForUser(request, reply);
-      },
-      cors: true
-    }
-});
+var getApis = {
+  "/userLocations":     "userLocations",
+  "/api/userLocations": "apiUserLocations"
+};
+
+function createRoutes(routes, method, cors) {
+  _.each(routes, function(val, key) {
+    server.route({
+      method: method,
+      path: key,
+      config: {
+        handler: function(request, reply) {
+          // Track time
+          var timerStart = Date.now();
+          console.log("\n<<Start " + key);
+          // console.log("payload: " + JSON.stringify(request.payload));
+          // Call api method
+          apiUtils[val](request, reply);
+          console.log(">>End " + key + " time " + (Date.now() - timerStart));
+        },
+        cors: cors
+      }
+    });
+  });
+}
+
+createRoutes(postApis, "POST");
+createRoutes(getApis, "GET", true);
 
 server.register({
     register: require('good'),

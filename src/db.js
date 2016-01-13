@@ -2,11 +2,13 @@ var _ = require('underscore');
 var Promise = require("bluebird");
 var uuid = require('node-uuid');
 
+var utils = require('./utils');
+
 var SEPARATOR = "::";
 // The length of the bounding box half edge(radius) in degrees
 // http://msi.nga.mil/MSISiteContent/StaticFiles/Calculators/degree.html
 // 1 degree = 110575m
-var BBOX_EDGE = 0.001356545;  // 150m
+var BBOX_EDGE = [0.001356545, 0.002713090, 0.004521817]  // 150m, 300m, 500m
 // 10 minutes overlap to consider that two locations intersect in time
 var TIME_OFFSET = 10 * 60000;
 // Time interval we search for should not expand more than 1day before & after location time
@@ -23,11 +25,19 @@ var client = new elasticsearch.Client({
 });
 
 var db = {
+  // TODO TEST
   saveListToDB: function(objects) {
-    var saveTasks = _.map(objects, function(object) {
-      return db.saveObjectToDB(object);
-    }.bind(this));
-    return Promise.settle(saveTasks);
+    var bulkOperations = [];
+    _.each(objects, function(object) {
+      var operation = {
+        index: _.pick(object, "_index", "_type", "_id")
+      }
+      bulkOperations.push(operation, object._source);
+    });
+
+    return Promise.resolve(client.bulk({
+      body: bulkOperations
+    }));
   },
   saveObjectToDB: function(object) {
     return Promise.resolve(client.index({
@@ -37,9 +47,52 @@ var db = {
       body: object._source
     }));
   },
+  // TODO TEST
+  updateListToDB: function(objects) {
+    var bulkOperations = [];
+    _.each(objects, function(object) {
+      var operation = {
+        update: _.pick(object, "_index", "_type", "_id")
+      }
+      bulkOperations.push(operation, _.pick(object, "doc", "upsert"));
+    });
 
-  savePointerToDB: function(pointerType, fromId, id, index, type) {
-    var object = {
+    return Promise.resolve(client.bulk({
+      body: bulkOperations
+    }));
+  },
+  updateObjectToDb: function(object) {
+    return Promise.resolve(client.update({
+      index: object._index,
+      type: object._type,
+      id: object._id,
+      body: _.pick(object, "doc", "upsert")
+    }));
+  },
+  increment: function(object, field, amount) {
+    // Increment object in memory
+    object._source[field] = (object._source[field] || 0) + 1;
+    // Increment object in db
+    return this.incrementToDb(object._id, object._index, object._type, field, amount);
+  },
+  incrementToDb: function(id, index, type, field, amount) {
+    return Promise.resolve(client.update({
+      index: index,
+      type: type,
+      id: id,
+      body: {
+        script: {
+          "id": "increment",
+          "params": {
+            "amount": amount
+          }
+        }
+      }
+    }));
+  },
+
+  createPointerObject: function(pointerType, fromId, id, index, type) {
+    return {
       _index: "pointers",
       _type: pointerType,
       _id: fromId,
@@ -49,7 +102,10 @@ var db = {
         id: id
       }
     };
-    return this.saveObjectToDB(object);
+  },
+
+  savePointerToDB: function(pointerType, fromId, id, index, type) {
+    return this.saveObjectToDB(this.createPointerObject(pointerType, fromId, id, index, type));
   },
 
   fetchMultiObjects: function(ids, index, type) {
@@ -59,20 +115,20 @@ var db = {
       body: {
         ids: ids
       }
-    });
+    }, ids.length);
   },
   
-  fetchMulti: function(params) {
+  fetchMulti: function(params, size) {
     params = _.extend(params, {
       ignore: [404],
-      size: 100,
+      size: size || 100,
     });
     return Promise.resolve(client.mget(params));
   },
-  fetch: function(params) {
+  fetch: function(params, size) {
     params = _.extend(params, {
       ignore: [404],
-      size: 100,
+      size: size || 100,
     });
     return Promise.resolve(client.get(params));
   },
@@ -89,11 +145,11 @@ var db = {
       return Promise.reject(error);
     });
   },
-  getLocationsForUserQuery: function(userId, timeStart, timeEnd) {
+  getLocationsForUserQuery: function(userId, timeStart, timeEnd, size) {
     return Promise.resolve(client.search({
       index: "locations",
       type: "location",
-      size: 100,
+      size: size || 100,
       body: {
         "query": {
           "filtered" : {
@@ -117,11 +173,12 @@ var db = {
       }
     }));
   },
-  getLocationsNearSingleLocation: function(location, excludeUserId) {
+  getLocationsNearSingleLocation: function(location, excludeUserId, radius, size) {
+    radius = radius || 0;
     return Promise.resolve(client.search({
       index: "locations",
       type: "location",
-      size: 100,
+      size: size || 100,
       body: {
         "query": {
           "filtered" : {
@@ -132,12 +189,12 @@ var db = {
                             "type":    "indexed",
                             "location": { 
                                   "top_left": {
-                                    "lat": location._source.location.lat + BBOX_EDGE,
-                                    "lon": location._source.location.lon - BBOX_EDGE
+                                    "lat": location._source.location.lat + BBOX_EDGE[radius],
+                                    "lon": location._source.location.lon - BBOX_EDGE[radius]
                                   },
                                   "bottom_right": {
-                                    "lat":  location._source.location.lat - BBOX_EDGE,
-                                    "lon": location._source.location.lon + BBOX_EDGE
+                                    "lat":  location._source.location.lat - BBOX_EDGE[radius],
+                                    "lon": location._source.location.lon + BBOX_EDGE[radius]
                                   }
                             }
                           }},
@@ -159,6 +216,67 @@ var db = {
                               "userId": excludeUserId
                           }
                       }
+                  }
+              }
+          }
+        }
+      }
+    }));
+  },
+
+  loadBumpsBetweenIds: function(userId, otherUsersIds, reverse, size) {
+    var term = {};
+    term["user" + (!reverse ? "1" : "2") + ".userId"] = userId;
+    var terms = {};
+    terms["user" + (reverse ? "1" : "2") + ".userId"] = otherUsersIds
+
+    return Promise.resolve(client.search({
+      index: "bumps",
+      type: "bump",
+      size: size || 100,
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                      "must": [
+                          {"term": term},
+                          {"terms": terms}
+                      ]
+                  }
+              }
+          }
+        }
+      }
+    }));
+  },
+
+  pickAvailableFakeUsers: function(user, size) {
+    return Promise.resolve(client.search({
+      index: "users",
+      type: "user",
+      size: size || 100,
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                      "must": [
+                          {"range": {
+                              "birthday": {
+                                  "gt":  user._source.ageIntMin * utils.C.YEAR,
+                                  "lt":  user._source.ageIntMax * utils.C.YEAR
+                              }
+                          }},
+                          {"range": {
+                              "lastTimeFake": {
+                                  "lt":   Date.now() - 20 * 60000
+                              }
+                          }},
+                          {"term": {
+                              "isFake": true
+                          }},
+                      ]
                   }
               }
           }
