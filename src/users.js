@@ -7,13 +7,17 @@ var uuid = require('node-uuid');
 var utils = require('./utils');
 
 var Users = {
-  updateUser: function(userId, updateData, newObject) {
+  updateUser: function(payload) {
+    var userId = payload.userId;
+    var updateData = payload.updateData;
+    var newObject = payload.newObject;
+
     var data = this.transformParseUserData(updateData);
-    var upsertData = _.extend(_.clone(data), {
+    var upsertData = _.extend({
       createdAt: data.createdAt ? (new Date(data.createdAt).getTime()) : Date.now(),
       gender: 3,
       genderInt: 3,
-    });
+    }, data);
     var object = {
       _index: "users",
       _type: "user",
@@ -22,6 +26,13 @@ var Users = {
       doc: data
     };
     return dbh.updateObjectToDb(object);
+  },
+  loadUsers: function(payload) {
+    var usersIds = payload.usersIds;
+    return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
+      users = users.docs;
+      return Promise.resolve(users.docs);
+    });
   },
 
   transformParseUserData: function(updateData) {
@@ -42,9 +53,6 @@ var Users = {
     },
     updatedAt: function(object, value) {
       object.updatedAt = new Date(value).getTime();
-    },
-    profile_views: function(object, value) {
-      object.profileViews = value;
     },
     nrOfBumps: function(object, value) {
       object.nrBumps = value;

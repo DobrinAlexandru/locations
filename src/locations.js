@@ -5,13 +5,19 @@ var Promise = require("bluebird");
 var _ = require('underscore');
 var geolib = require('geolib');
 var uuid = require('node-uuid');
+var utils = require('./utils');
 
 var LOCATION_DIFFERENCE = 50;
 var USERID_TO_LOCID = "useridToLocid";
 
 var Locations = {
   handleLocationsRequest: function(payload) {
-    return this.processLocations(payload.locations, payload.userId, payload.radius).bind(this);
+    return this.processLocations(payload.locations, payload.userId, payload.radius).bind(this)
+      .then(function(locations) {
+        return Promise.resolve({
+          locations: locations
+        });
+      });
   },
 
   getLocationsForUser: function(payload) {
@@ -86,15 +92,15 @@ var Locations = {
     // We assign CUSTOM ID only to the LAST LOCATION. We let elasticsearch to provide ids to the others
     // We need this in order to do locations saving and pointer saving in paralel.
     var lastLocation = _.last(locations);
-    var lastLocationId = lastLocation._id = uuid.v1();
+    if (!lastLocation._id) lastLocation._id = uuid.v1();
     // Create pointer to last user location
-    var pointerToLastUserLocation = dbh.createPointerObject(USERID_TO_LOCID, userId, lastLocationId, "locations", "location");
+    var pointerToLastUserLocation = dbh.createPointerObject(USERID_TO_LOCID, userId, lastLocation._id, "locations", "location");
     // Attach to list of objects and save in bulk
     locations.push(pointerToLastUserLocation);
 
     return dbh.saveListToDB(locations).then(function(result) {
         console.log("TIME save: " + (Date.now() - timerStart));
-        return Promise.resolve([]);
+        return Promise.resolve();
       });
   },
 
@@ -181,8 +187,7 @@ var Locations = {
   },
 
   compressLocations: function(locations, latestLocation) {
-    console.log("locs: " + JSON.stringify(locations.length));
-    console.log("last: " + JSON.stringify(latestLocation._id));
+    console.log("last: " + latestLocation._id);
     var compressedLocations = [];
 
     if (locations.length === 0) {
@@ -223,9 +228,8 @@ var Locations = {
     // It's safe to supose that the user will stay here for the next x hours
     // until he uploads a new location. In that case we'll shrink that time interval.
     // Add 2 hours offset to the latest location.
-    latestLocation._source.timeEnd = latestLocation._source.timeEnd + 2 * 3600000;
-    latestLocation._source.timeSpent = latestLocation._source.timeSpent + 2 * 3600000;
-    console.log("comp locs: " + compressedLocations.length);
+    latestLocation._source.timeEnd = latestLocation._source.timeEnd + 2 * utils.C.HOUR;
+    latestLocation._source.timeSpent = latestLocation._source.timeSpent + 2 * utils.C.HOUR;
     return compressedLocations;
   },
 
@@ -247,7 +251,7 @@ var Locations = {
       if (!location["time"]) {
         // If location doesn't have a time, set current time
         location["time"] = Date.now();
-      } else if (location["time"] > Date.now() + 3600000) {
+      } else if (location["time"] > Date.now() + utils.C.HOUR) {
         // If locations is more than 1 hour into the future, set current time
         location["time"] = Date.now();
       }

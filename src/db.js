@@ -45,7 +45,12 @@ var db = {
       type: object._type,
       id: object._id,
       body: object._source
-    }));
+    })).then(function(result) {
+      if (!object._id) {
+        object._id = result._id;
+      }
+      return Promise.resolve(object);
+    });
   },
   // TODO TEST
   updateListToDB: function(objects) {
@@ -125,23 +130,23 @@ var db = {
     });
     return Promise.resolve(client.mget(params));
   },
-  fetch: function(params, size) {
+  fetchObject: function(id, index, type) {
+    return this.fetch({
+      index: index,
+      type: type,
+      id: id
+    });
+  },
+  fetch: function(params) {
     params = _.extend(params, {
       ignore: [404],
-      size: size || 100,
     });
     return Promise.resolve(client.get(params));
   },
   fetchPointer: function(pointerType, fromId) {
-    return this.fetch({
-      index: "pointers",
-      type: pointerType,
-      id: fromId
-    }).bind(this).then(function(pointer) {
-      console.log("pointer yes");
+    return this.fetchObject(fromId, "pointers", pointerType).bind(this).then(function(pointer) {
       return pointer._source ? this.fetch(pointer._source) : Promise.resolve({});
     }, function(error) {
-      console.log("pointer no" + JSON.stringify(error));
       return Promise.reject(error);
     });
   },
@@ -224,16 +229,29 @@ var db = {
     }));
   },
 
-  loadBumpsBetweenIds: function(userId, otherUsersIds, reverse, size) {
+  loadBumps: function(userId, otherUsersIds, reverse, skip, size) {
     var term = {};
     term["user" + (!reverse ? "1" : "2") + ".userId"] = userId;
-    var terms = {};
-    terms["user" + (reverse ? "1" : "2") + ".userId"] = otherUsersIds
+
+    var must = [
+      {"term":  term}
+    ];
+    var sort;
+    if (otherUsersIds) {
+      var terms = {};
+      terms["user" + (reverse ? "1" : "2") + ".userId"] = otherUsersIds
+      must.push({"terms": terms});
+    } else {
+      sort = [
+        { "updatedAt":   { "order": "desc" }}
+      ];
+    }
 
     return Promise.resolve(client.search({
       index: "bumps",
       type: "bump",
-      size: size || 100,
+      size: size || 20,
+      from: skip || 0,
       body: {
         "query": {
           "filtered" : {
@@ -246,12 +264,14 @@ var db = {
                   }
               }
           }
-        }
+        },
+        "sort": sort
       }
     }));
   },
 
   pickAvailableFakeUsers: function(user, size) {
+    var currentTime = Date.now();
     return Promise.resolve(client.search({
       index: "users",
       type: "user",
@@ -264,13 +284,13 @@ var db = {
                       "must": [
                           {"range": {
                               "birthday": {
-                                  "gt":  user._source.ageIntMin * utils.C.YEAR,
-                                  "lt":  user._source.ageIntMax * utils.C.YEAR
+                                  "gt":  currentTime - user._source.ageIntMin * utils.C.YEAR,
+                                  "lt":  currentTime - user._source.ageIntMax * utils.C.YEAR
                               }
                           }},
                           {"range": {
                               "lastTimeFake": {
-                                  "lt":   Date.now() - 20 * 60000
+                                  "lt":   currentTime - 20 * 60000
                               }
                           }},
                           {"term": {
@@ -281,6 +301,102 @@ var db = {
               }
           }
         }
+      }
+    }));
+  },
+  loadConversations: function(userId, otherUsersIds, skip, size) {
+    var must1 = [
+      {"term":  {"user1.userId": userId}}
+    ];
+    var must2 = [
+      {"term":  {"user2.userId": userId}}
+    ];
+    var sort;
+    if (otherUsersIds) {
+      must1.push({"terms": {"user2.userId": otherUsersIds}});
+      must2.push({"terms": {"user1.userId": otherUsersIds}});
+    } else {
+      sort = [
+        { "lastMsg.time":   { "order": "desc" }}
+      ];
+    }
+
+    return Promise.resolve(client.search({
+      index: "conversations",
+      type: "conversation",
+      size: size || 20,
+      from: skip || 0,
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                    "should": [
+                      {"bool": {
+                        "must": must1,
+                        "must_not": {"term": {"user1.deleted": true}}
+                      }},
+                      {"bool": {
+                        "must": must2,
+                        "must_not": {"term": {"user2.deleted": true}}
+                      }}
+                    ]
+                  }
+              }
+          }
+        },
+        "sort": sort
+      }
+    }));
+  },
+  loadMessages: function(userId, otherUserId, newerThan, skip, size) {
+    var must1 = [
+      {"term":  {"user1.userId": userId}},
+      {"term":  {"user2.userId": otherUserId}},
+    ];
+    var must2 = [
+      {"term":  {"user2.userId": userId}},
+      {"term":  {"user1.userId": otherUserId}},
+    ];
+    var sort = [
+      { "createdAt":   { "order": "desc" }}
+    ];
+    if (newerThan) {
+      must1.push({"range": {
+                      "createdAt": {
+                          "gt": newerThan
+                      }
+                  }});
+      must2.push({"range": {
+                      "createdAt": {
+                          "gt": newerThan
+                      }
+                  }});
+    }
+
+    return Promise.resolve(client.search({
+      index: "messages",
+      type: "message",
+      size: size || 20,
+      from: skip || 0,
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                    "should": [
+                      {"bool": {
+                        "must": must1,
+                      }},
+                      {"bool": {
+                        "must": must2,
+                      }}
+                    ]
+                  }
+              }
+          }
+        },
+        "sort": sort
       }
     }));
   }
