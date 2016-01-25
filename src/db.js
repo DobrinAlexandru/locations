@@ -226,6 +226,52 @@ var db = {
       }
     }));
   },
+  getLatestLocationsByUser: function(nrUsers, nrLocations) {
+    console.log(nrUsers + " " + nrLocations);
+    return Promise.resolve(client.search({
+      index: "locations",
+      type: "location",
+      body: {
+        "size": 0,
+        "query": {
+          "query_string": {
+            "query": "*",
+            "analyze_wildcard": true
+          }
+        },
+        "aggs": {
+          "latestByUser": {
+            "terms": {
+              "field": "userId",
+              "size": nrUsers,
+              "order": {
+                "sortingAgg": "desc"
+              }
+            },
+            "aggs": {
+               "latestLocations": {
+                          "top_hits": {
+                              "sort": [
+                                  {
+                                      "timeEnd": {
+                                          "order": "desc"
+                                      }
+                                  }
+                              ],
+                              "size" : nrLocations
+                          }
+                      },
+              "sortingAgg": {
+                "max": {
+                  "field": "timeEnd"
+                }
+              }
+            }
+          }
+        }
+      }
+    }));
+  },
 
   loadBumps: function(userId, otherUsersIds, friendStatus, reverse, skip, size) {
     var term = {};

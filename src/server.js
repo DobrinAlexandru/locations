@@ -37,8 +37,11 @@ var postApis = {
 };
 
 var getApis = {
-  "/userLocations":     "userLocations",
-  "/api/userLocations": "apiUserLocations"
+  "/userLocations":             "userLocations",
+  "/api/userLocations":         "apiUserLocations",
+  
+  "/latestLocationsByUser":     "latestLocationsByUser",
+  "/api/latestLocationsByUser": "apiLatestLocationsByUser"
 };
 
 function createRoutes(routes, method, cors) {

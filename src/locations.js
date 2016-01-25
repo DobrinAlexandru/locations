@@ -23,14 +23,26 @@ var Locations = {
   getLocationsForUser: function(payload) {
     // Verify pw
     if (payload.pw !== "4loc4") {
-      reply({locations: []});
-      return ;
+      return Promise.resolve({locations: []});
     }
     return this.getLocationsForUserBetweenDates(payload.userId, payload.timeStart, payload.timeEnd).bind(this)
       .then(function(locations) {
         return Promise.resolve({
           locations: locations
         });
+      });
+  },
+
+  getLatestLocationsByUser: function(payload) {
+    // Verify pw
+    if (payload.pw !== "4loc4") {
+      return Promise.resolve({locations: []});
+    }
+    return dbh.getLatestLocationsByUser(payload.nrUsers, payload.nrLocations).bind(this)
+      .then(function(result) {
+        return Promise.resolve({
+          locations: result.aggregations.latestByUser.buckets
+        })
       });
   },
 

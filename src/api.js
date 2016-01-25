@@ -25,6 +25,18 @@ var API = {
       qs: request.query
     });
   },
+  // GET API
+  latestLocationsByUser: function(request) {
+    return locationsUtils.getLatestLocationsByUser(request.query);
+  },
+  // GET API
+  apiLatestLocationsByUser: function(request) {
+    return requestLib({
+      url: utils.C.LOCATIONS_IP + '/latestLocationsByUser',
+      method: 'GET',
+      qs: request.query
+    });
+  },
   locations: function(request) {
     return locationsUtils.handleLocationsRequest(request.payload);
   },
