@@ -44,15 +44,16 @@ var Bumps = {
     var userId = payload.currentUserId;
     var skip = payload.skip;
     var limit = payload.limit;
-    return dbh.loadBumps(userId, null, false, skip, limit).bind(this).then(function(bumps) {
+    return dbh.loadBumps(userId, null, null, false, skip, limit).bind(this).then(function(bumps) {
       bumps = bumps.hits.hits;
       console.log("1 " + bumps.length);
       var otherUsersIds = utils.getOtherUsersIds(userId, bumps);
       if (bumps.length === 0) {
         return Promise.all([
-         Promise.resolve([]),
-         Promise.resolve({docs: []}),
-         Promise.resolve({hits: {hits: []}})]);
+          Promise.resolve([]),
+          Promise.resolve({docs: []}),
+          Promise.resolve({hits: {hits: []}})
+        ]);
       }
       // Load users & bumps & attach to each conversation
       return Promise.all([
@@ -182,7 +183,7 @@ var Bumps = {
   // Create bumps between userId and otherUsersIds, using the "reverse" variable as a way a -> b or a <- b
   createOneWayBumps: function(userId, otherUsersIds, usersById, locationsByUser, reverse) {
     console.log("6 " + JSON.stringify(otherUsersIds));
-    return dbh.loadBumps(userId, otherUsersIds, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
+    return dbh.loadBumps(userId, otherUsersIds, null, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
       var existingsBumps = bumps.hits.hits;
       console.log("6.2 existings bumps " + existingsBumps.length);
       // Optimisation since Date.now() is expensive

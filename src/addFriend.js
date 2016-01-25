@@ -54,7 +54,6 @@ var AddFriend = {
   acceptFriend: function(payload) {
     var fromUserId = payload.fromUserId;
     var toUserId = payload.toUserId;
-    var inboxItemId = payload.inboxItemId;
 
     return Promise.all([
       dbh.fetchObject(fromUserId + toUserId, "bumps", "bump"),
@@ -74,7 +73,7 @@ var AddFriend = {
           }
           case 2: {
             // I have a friend request pending. In this case, I must accept the friend request.
-            switchPromise = this.acceptFriendRequest(fromUserId, toUserId, bump1, bump2, inboxItemId);
+            switchPromise = this.acceptFriendRequest(fromUserId, toUserId, bump1, bump2);
             break;
           }
           case 4: {
@@ -89,16 +88,7 @@ var AddFriend = {
           }
       }
       return switchPromise;
-   }).then(function(result) {
-      return dbh.fetchObject(utils.keys(fromUserId, toUserId), "conversations", "conversation")
-        .then(function(conversation) {
-          if (!conversation._source) {
-            return conversationsUtils.createConversation(fromUserId, toUserId);
-          } else {
-            return Promise.resolve([]);
-          }
-        });
-    });
+   });
   },
   hideIntersection: function(payload) {
     var fromUserId = payload.fromUserId;
@@ -108,10 +98,8 @@ var AddFriend = {
     return Promise.all([
       dbh.fetchObject(fromUserId + toUserId, "bumps", "bump"),
       dbh.fetchObject(toUserId + fromUserId, "bumps", "bump"),
-      dbh.fetchObject(toUserId + fromUserId, "inbox", "friendRequest"),
-      dbh.fetchObject(fromUserId + toUserId, "inbox", "friendRequest"),
       dbh.fetchObject(utils.keys(fromUserId, toUserId), "conversations", "conversation")
-    ]).spread(function(bump1, bump2, inboxItem1, inboxItem2, conversation){
+    ]).spread(function(bump1, bump2, conversation){
       var itemsToSave = [];
       if (bump1) {
         bump1.doc = {
@@ -128,32 +116,64 @@ var AddFriend = {
         };
         itemsToSave.push(bump2);
       }
-      if (inboxItem1) {
-        inboxItem1.doc = {
-          hidden: true
-        };
-        itemsToSave.push(inboxItem1);
-      }
-      if (inboxItem2) {
-        inboxItem2.doc = {
-          hidden: true
-        };
-        itemsToSave.push(inboxItem2);
-      }
       if (conversation) {
-        var currentDate = Date.now();
         conversation.doc = {
           user1: _.extend(conversation._source.user1, {
-            deletedDate: currentDate
+            deleted: true
           }),
           user2: _.extend(conversation._source.user1, {
-            deletedDate: currentDate
+            deleted: true
           })
         };
         itemsToSave.push(conversation);
       }
       return dbh.updateListToDB(itemsToSave);
     });
+  },
+  loadInbox: function(payload) {
+    var userId = payload.currentUserId;
+    var skip = payload.skip;
+    var limit = payload.limit;
+    return dbh.loadBumps(userId, null, 2, false, skip, limit).bind(this).then(function(bumps) {
+      bumps = bumps.hits.hits;
+      console.log("1 " + bumps.length);
+      var otherUsersIds = utils.getOtherUsersIds(userId, bumps);
+      otherUsersIds.push(userId);
+      if (bumps.length === 0) {
+        return Promise.all([
+          Promise.resolve([]),
+          Promise.resolve({docs: []})
+        ]);
+      }
+      // Load users & bumps & attach to each conversation
+      return Promise.all([
+        Promise.resolve(bumps),
+        dbh.fetchMultiObjects(otherUsersIds, "users", "user"),
+      ]);
+    }).spread(function(bumps, users) {
+      users = users.docs;
+      return Promise.resolve(this.attachUsers(userId, bumps, users));
+    });
+  },
+  attachUsers: function(userId, bumps, users) {
+    // User hash
+    var withUsersHash = _.object(_.map(users, function(user) {
+      return [user._id, user];
+    }));
+    var user = withUsersHash[userId];
+    var results = _.map(bumps, function(bump) {
+      var otherId = bump._source.user2.userId;
+      return {
+        bump: bump,
+        user1: user,
+        user2: withUsersHash[otherId]
+      };
+    });
+    // Filter out bad results
+    results = _.filter(results, function(obj) {
+      return !!(obj.user1 && obj.user2);
+    });
+    return results;
   },
   createFriendRequest: function(fromUserId, toUserId, bump1, bump2) {
     bump1.doc = {
@@ -165,20 +185,8 @@ var AddFriend = {
       seen: true,
     };
 
-    var inboxItem = {
-      _index: "inbox",
-      _type: "friendRequest",
-      _id: fromUserId + toUserId,
-      _source: {
-        user1Id: fromUserId,
-        user2Id: toUserId,
-        bumpId: bump2._id,
-      }
-    };
-
     return Promise.all([
       dbh.updateListToDB([bump1, bump2]),
-      dbh.saveObjectToDB(inboxItem),
       dbh.fetchObject(fromUserId, "users", "user").then(function(fromUser) {
         // Don't wait for notification
         notificationsUtils.sendAddFriendNotification(fromUser, toUserId, "add_friend");
@@ -187,35 +195,34 @@ var AddFriend = {
     ]);
   },
   // fromUserId is the id of the user that made the post request.
-  acceptFriendRequest: function(fromUserId, toUserId, bump1, bump2, inboxItemId) {
-    // If inboxItemId is availabl use it. Else do the query by the two user ids.
-    return dbh.fetchObject(toUserId + fromUserId, "inbox", "friendRequest")
-      .then(function(inboxItem) {
-        if (!inboxItem._source) {
-          return Promise.reject("Friend request not found");
-        }
-        // Mark as friends
-        bump1.doc = {
-          friendStatus: 3,
-          seen: true,
-        };
-        bump2.doc = {
-          friendStatus: 3,
-          seen: true,
-        };
-        // Hide inboxItem
-        inboxItem.doc = {
-          hidden: true
-        };
-        return Promise.all([
-          dbh.updateListToDB([bump1, bump2, inboxItem]),
-          dbh.fetchObject(fromUserId, "users", "user").then(function(fromUser) {
-            // Don't wait for notification to send
-            notificationsUtils.sendAddFriendNotification(fromUser, toUserId, "accept_friend");
-            return Promise.resolve({});
-          })
-        ]);
-      });
+  acceptFriendRequest: function(fromUserId, toUserId, bump1, bump2) {
+    // Mark as friends
+    bump1.doc = {
+      friendStatus: 3,
+      seen: true,
+    };
+    bump2.doc = {
+      friendStatus: 3,
+      seen: true,
+    };
+    return Promise.all([
+      dbh.updateListToDB([bump1, bump2]),
+      dbh.fetchObject(fromUserId, "users", "user").then(function(fromUser) {
+        // Don't wait for notification to send
+        notificationsUtils.sendAddFriendNotification(fromUser, toUserId, "accept_friend");
+        return Promise.resolve({});
+      })
+    ]).then(function(result) {
+      // Create conversation if it doesn't exist
+      return dbh.fetchObject(utils.keys(fromUserId, toUserId), "conversations", "conversation")
+        .then(function(conversation) {
+          if (!conversation._source) {
+            return conversationsUtils.createConversation(fromUserId, toUserId);
+          } else {
+            return Promise.resolve([]);
+          }
+        });
+    });
   }
 };
 module.exports = AddFriend;

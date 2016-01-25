@@ -21,15 +21,16 @@ var Conversations = {
       console.log("1 " + conversations.length);
       if (conversations.length === 0) {
         return Promise.all([
-         Promise.resolve([]),
-         Promise.resolve({docs: []}),
-         Promise.resolve({hits: {hits: []}})]);
+          Promise.resolve([]),
+          Promise.resolve({docs: []}),
+          Promise.resolve({hits: {hits: []}})
+        ]);
       }
       // Load users & bumps & attach to each conversation
       return Promise.all([
         Promise.resolve(conversations),
         dbh.fetchMultiObjects(otherUsersIds, "users", "user"),
-        dbh.loadBumps(userId, otherUsersIds, false, 0, otherUsersIds.length)
+        dbh.loadBumps(userId, otherUsersIds, null, false, 0, otherUsersIds.length)
       ]);
     }).spread(function(conversations, users, bumps) {
       users = users.docs;
@@ -48,13 +49,12 @@ var Conversations = {
       .then(function(messages) {
         messages = messages.hits.hits;
         // Sort messages back in ascending order
-        messages = _.sort(messages, function(message) {
+        messages = _.sortBy(messages, function(message) {
           return message._source.createdAt;
         });
         return Promise.resolve(messages);
       });
   },
-  // TODO transform output
   sendMessage: function(payload) {
     var fromUserId = payload.fromUserId;
     var toUserId = payload.toUserId;
@@ -68,7 +68,6 @@ var Conversations = {
     var fromUser, toUser;
     return dbh.fetchMultiObjects([fromUserId, toUserId], "users", "user").bind(this).then(function(users) {
       users = users.docs;
-      console.log("1 " + users.length);
       fromUser = users[0];
       toUser = users[1];
       return this.createOrUpdateConversation(fromUser, toUser, msg, msgDate);
@@ -89,22 +88,21 @@ var Conversations = {
       } else {
         if (userId === conversation._source.user1.userId) {
           conversation.doc = {
-            user1: _.extend(conversation._source.user1, {
+            user1: {
               msgsUnread: 0
-            })
+            }
           };
         } else {
           conversation.doc = {
-            user2: _.extend(conversation._source.user2, {
+            user2: {
               msgsUnread: 0
-            })
+            }
           };
         }
         return dbh.updateObjectToDb(conversation);
       }
     });
   },
-  // TODO test
   deleteConversation: function(payload) {
     var conversationId = payload.conversationId;
     var userId = payload.currentUserId;
@@ -114,15 +112,15 @@ var Conversations = {
       } else {
         if (userId === conversation._source.user1.userId) {
           conversation.doc = {
-            user1: _.extend(conversation._source.user1, {
+            user1: {
               deleted: true
-            })
+            }
           };
         } else {
           conversation.doc = {
-            user2: _.extend(conversation._source.user2, {
+            user2: {
               deleted: true
-            })
+            }
           };
         }
         return dbh.updateObjectToDb(conversation);
@@ -151,8 +149,6 @@ var Conversations = {
     });
     // Filter out bad conversations
     results = _.filter(results, function(obj) {
-      console.log("4.1 " + obj.user);
-      console.log("4.2 " + obj.bump);
       return !!(obj.user && obj.bump);
     });
     return results;
@@ -160,7 +156,6 @@ var Conversations = {
   createOrUpdateConversation: function(fromUser, toUser, msg, msgDate) {
     return dbh.fetchObject(utils.keys(fromUser._id, toUser._id), "conversations", "conversation").bind(this)
       .then(function(conversation) {
-        console.log("2 " + JSON.stringify(conversation));
         if (conversation._source) {
           return this.updateConversation(conversation, fromUser, msg, msgDate);
         } else {
@@ -209,24 +204,24 @@ var Conversations = {
     var user1 = conversation._source.user1;
     var user2 = conversation._source.user2;
     if (fromUser._id === user1.userId) {
-      update.user1 = _.extend(user1, {
+      update.user1 = {
         msgsSent: (user1.msgsSent || 0) + 1,
-      });
+      };
       if (user1.deleted) update.user1.deleted = false;
 
-      update.user2 = _.extend(user2, {
+      update.user2 = {
         msgsUnread: (user2.msgsUnread || 0) + 1,
-      });
+      };
       if (user2.deleted) update.user2.deleted = false;
     } else {
-      update.user2 = _.extend(user2, {
+      update.user2 = {
         msgsSent: (user2.msgsSent || 0) + 1,
-      });
+      };
       if (user2.deleted) update.user2.deleted = false;
 
-      update.user1 = _.extend(user1, {
+      update.user1 = {
         msgsUnread: (user1.msgsUnread || 0) + 1,
-      });
+      };
       if (user1.deleted) update.user1.deleted = false;
     }
     conversation.doc = update;

@@ -31,7 +31,7 @@ var Users = {
     var usersIds = payload.usersIds;
     return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
       users = users.docs;
-      return Promise.resolve(users.docs);
+      return Promise.resolve(users);
     });
   },
 

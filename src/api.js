@@ -13,16 +13,11 @@ var addFriendUtils = require('./addFriend');
 var utils = require('./utils');
 
 var API = {
-  locations: function(request) {
-    return locationsUtils.handleLocationsRequest(request.payload);
-  },
-  apiLocations: function(request) {
-    return bumpsUtils.processLocationsAndCreateOrUpdateBumps(request.payload);
-  },
+  // GET API
   userLocations: function(request) {
     return locationsUtils.getLocationsForUser(request.query);
   },
-  // TODO FIX GET
+  // GET API
   apiUserLocations: function(request) {
     return requestLib({
       url: utils.C.LOCATIONS_IP + '/userLocations',
@@ -30,10 +25,19 @@ var API = {
       qs: request.query
     });
   },
-
+  locations: function(request) {
+    return locationsUtils.handleLocationsRequest(request.payload);
+  },
+  apiLocations: function(request) {
+    return bumpsUtils.processLocationsAndCreateOrUpdateBumps(request.payload);
+  },
   apiLoadNewsFeed: function(request) {
     return bumpsUtils.loadNewsFeed(request.payload);
   },
+  apiMarkBumpAsSeen: function(request) {
+    return bumpsUtils.markBumpAsSeen(request.payload);
+  },
+
   apiUpdateUser: function(request) {
     return usersUtils.updateUser(request.payload);
   },
@@ -57,6 +61,9 @@ var API = {
     return conversationsUtils.deleteConversation(request.payload);
   },
 
+  apiLoadInbox: function(request) {
+    return addFriendUtils.loadInbox(request.payload);
+  },
   apiAddFriend: function(request) {
     return addFriendUtils.addFriend(request.payload);
   },

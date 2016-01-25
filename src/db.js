@@ -25,7 +25,6 @@ var client = new elasticsearch.Client({
 });
 
 var db = {
-  // TODO TEST
   saveListToDB: function(objects) {
     var bulkOperations = [];
     _.each(objects, function(object) {
@@ -52,7 +51,6 @@ var db = {
       return Promise.resolve(object);
     });
   },
-  // TODO TEST
   updateListToDB: function(objects) {
     var bulkOperations = [];
     _.each(objects, function(object) {
@@ -229,13 +227,16 @@ var db = {
     }));
   },
 
-  loadBumps: function(userId, otherUsersIds, reverse, skip, size) {
+  loadBumps: function(userId, otherUsersIds, friendStatus, reverse, skip, size) {
     var term = {};
     term["user" + (!reverse ? "1" : "2") + ".userId"] = userId;
 
     var must = [
       {"term":  term}
     ];
+    if (friendStatus) {
+      must.push({"term": {"friendStatus": friendStatus}});
+    }
     var sort;
     if (otherUsersIds) {
       var terms = {};
@@ -257,10 +258,8 @@ var db = {
           "filtered" : {
               "filter" : {
                   "bool": {
-                      "must": [
-                          {"term": term},
-                          {"terms": terms}
-                      ]
+                      "must": must,
+                      "must_not": {"term": {"friendStatus": 4}}
                   }
               }
           }

@@ -16,10 +16,9 @@ server.connection({
 var postApis = {
   "/locations":         "locations",
   "/api/locations":     "apiLocations",
-  // "/api/updateBumps":   "apiUpdateBumps",
   "/api/loadNewsFeed":  "apiLoadNewsFeed",
   "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
-  
+
   "/api/updateUser":    "apiUpdateUser",
   "/api/loadUsers":     "apiLoadUsers",
 
@@ -29,6 +28,7 @@ var postApis = {
   "/api/markConvAsRead":      "apiMarkConvAsRead",
   "/api/deleteConv":          "apiDeleteConv",
 
+  "/api/loadInbox":           "apiLoadInbox",
   "/api/addFriend":           "apiAddFriend",
   "/api/acceptFriend":        "apiAcceptFriend",
   "/api/hideIntersection":    "apiHideIntersection",
