@@ -22,8 +22,9 @@ var API = {
     return requestLib({
       url: utils.C.LOCATIONS_IP + '/userLocations',
       method: 'GET',
+      json: true,
       qs: request.query
-    });
+    }).get(1);
   },
   // GET API
   latestLocationsByUser: function(request) {
@@ -34,8 +35,9 @@ var API = {
     return requestLib({
       url: utils.C.LOCATIONS_IP + '/latestLocationsByUser',
       method: 'GET',
+      json: true,
       qs: request.query
-    });
+    }).get(1);
   },
   locations: function(request) {
     return locationsUtils.handleLocationsRequest(request.payload);
