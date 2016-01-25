@@ -38,6 +38,9 @@ var Locations = {
     if (payload.pw !== "4loc4") {
       return Promise.resolve({locations: []});
     }
+    if (payload.nrUsers * payload.nrLocations > 30000) {
+      return Promise.resolve({locations: ["Fuckere, cere mai putine"]});
+    }
     return dbh.getLatestLocationsByUser(payload.nrUsers, payload.nrLocations).bind(this)
       .then(function(result) {
         return Promise.resolve({
