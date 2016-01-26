@@ -91,13 +91,14 @@ var Bumps = {
     var usersById = {};
     // Fetch users
     return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
-        console.log("5 ");
         users = users.docs;
+        console.log("5 " + users.length);
         // Group users by id
         usersById = _.object(_.map(users, function(user) {
           return [user._id, user];
         }));
         // console.log("5.1 " + JSON.stringify(usersById));
+        // TODO handle empty lists
         return Promise.all([
           this.createOneWayBumps(userId, otherUsersIds, usersById, locationsByUser, false),
           this.createOneWayBumps(userId, otherUsersIds, usersById, locationsByUser, true),
@@ -205,8 +206,7 @@ var Bumps = {
   },
 
   updateExistingsBumps: function(existingsBumps, userId, usersById, locationsByUser, currentTime, reverse) {
-    // TODO remove comment
-    var halfDayAgo = Date.now();// - 12 * 3600000;
+    var halfDayAgo = Date.now() - utils.C.DAY / 2;
     var updatedBumps = [];
     var userIdsWithBumps = [];
     _.each(existingsBumps, function(bump) {

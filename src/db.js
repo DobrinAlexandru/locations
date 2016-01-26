@@ -226,17 +226,28 @@ var db = {
       }
     }));
   },
-  getLatestLocationsByUser: function(nrUsers, nrLocations) {
-    console.log(nrUsers + " " + nrLocations);
+  getLatestLocationsByUser: function(nrUsers, nrLocations, timeStart, timeEnd) {
+    timeStart = timeStart || Date.now() - utils.C.HOUR;
+    timeEnd = timeEnd || Date.now() + utils.C.DAY / 2;
     return Promise.resolve(client.search({
       index: "locations",
       type: "location",
       body: {
         "size": 0,
         "query": {
-          "query_string": {
-            "query": "*",
-            "analyze_wildcard": true
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                      "must": [
+                          {"range": {
+                              "timeEnd": {
+                                  "gt": timeStart,
+                                  "lt": timeEnd
+                              }
+                          }}
+                      ]
+                  }
+              }
           }
         },
         "aggs": {
