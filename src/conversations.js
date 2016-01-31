@@ -30,7 +30,7 @@ var Conversations = {
       return Promise.all([
         Promise.resolve(conversations),
         dbh.fetchMultiObjects(otherUsersIds, "users", "user"),
-        dbh.loadBumps(userId, otherUsersIds, null, false, 0, otherUsersIds.length)
+        dbh.loadBumps({userId: userId, otherUsersIds: otherUsersIds}, false, 0, otherUsersIds.length)
       ]);
     }).spread(function(conversations, users, bumps) {
       users = users.docs;
@@ -123,7 +123,10 @@ var Conversations = {
             }
           };
         }
-        return dbh.updateObjectToDb(conversation);
+        return Promise.all([
+          Promise.resolve(conversation),
+          dbh.updateObjectToDb(conversation),
+        ]).get(0);
       }
     });
   },
@@ -180,13 +183,13 @@ var Conversations = {
           userId: toUser._id,
           firstName: toUser._source.firstName,
           msgsSent: 0,
-          msgsUnread: 0,
+          msgsUnread: 1,
           // deleted: false,
         },
-        totalMsgs: 1,
+        totalMsgs: msg ? 1 : 0,
         lastMsg: {
           text: msg,
-          time: msgDate
+          time: msgDate || Date.now()
         }
       }
     };

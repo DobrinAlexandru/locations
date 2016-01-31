@@ -23,7 +23,7 @@ var client = new elasticsearch.Client({
     levels: ['error', 'warning'] // change these options
   }]
 });
-
+ 
 var db = {
   saveListToDB: function(objects) {
     var bulkOperations = [];
@@ -87,6 +87,7 @@ var db = {
         script: {
           "id": "increment",
           "params": {
+            "field": field,
             "amount": amount
           }
         }
@@ -284,25 +285,116 @@ var db = {
     }));
   },
 
-  loadBumps: function(userId, otherUsersIds, friendStatus, reverse, skip, size) {
+  loadBumps: function(userData, reverse, skip, size) {
+    var userId = userData.userId || userData.user._id;
+    var otherUsersIds = userData.otherUsersIds;
+    var user = userData.user;
+    var friendStatus = userData.friendStatus;
+    var applyFilters = userData.filters;
+    var applySort = userData.sort;
+    var retrieveHidden = userData.hidden;
+    var seen = userData.seen;
+    
     var term = {};
     term["user" + (!reverse ? "1" : "2") + ".userId"] = userId;
-
     var must = [
       {"term":  term}
     ];
     if (friendStatus) {
       must.push({"term": {"friendStatus": friendStatus}});
     }
+    if (!(seen === undefined || seen === null)) {
+      must.push({"term": {"seen": seen}});
+    }
     var sort;
+    if (applySort) {
+      // Sort newsfeed
+      sort = [
+        { "updatedAt":   { "order": "desc" }}
+      ];
+    }
+
     if (otherUsersIds) {
       var terms = {};
       terms["user" + (reverse ? "1" : "2") + ".userId"] = otherUsersIds
       must.push({"terms": terms});
-    } else {
-      sort = [
-        { "updatedAt":   { "order": "desc" }}
-      ];
+    }
+
+    if (applyFilters) {
+      // Age filter
+      // My age is in others interests
+      if (user._source.birthday) {
+        must.push({
+          "range": {
+              "user2.ageIntMax": {
+                  "gte": utils.age(user._source.birthday)
+              }
+          }
+        });
+        must.push({
+          "range": {
+              "user2.ageIntMin": {
+                  "lte": utils.age(user._source.birthday)
+              }
+          }
+        });
+        // Others are fall in my interests
+        must.push({
+          "range": {
+              "user2.birthday": {
+                  "gte": utils.birthday(user._source.ageIntMax),
+                  "lte": utils.birthday(user._source.ageIntMin)
+              }
+          }
+        });
+      }
+
+      // Gender filter
+      // (x, y) <=> (y, x) || (y, 3)
+      // (x, 3) <=> (-, x) || (-, 3)
+      // (3, x) <=> (x, 3)
+      // (3, 3) <=> (-, 3)
+
+      if (user._source.gender === 3 && user._source.genderInt === 3) {
+        must.push({
+          "term": {"user2.genderInt": 3}
+        });
+      } else if (user._source.gender === 3) {
+        must.push({
+          "term": {"user2.gender": user._source.genderInt}
+        });
+        must.push({
+          "term": {"user2.genderInt": 3}
+        });
+      } else if (user._source.genderInt === 3) {
+        must.push({
+          "bool" : {
+            "should": [
+              {"term": {"user2.genderInt": 3}},
+              {"term": {"user2.genderInt": user._source.gender}}
+            ]
+          }
+        });
+      } else {
+        must.push({
+          "term": {"user2.gender": user._source.genderInt}
+        });
+        must.push({
+          "bool" : {
+            "should": [
+              {"term": {"user2.genderInt": 3}},
+              {"term": {"user2.genderInt": user._source.gender}}
+            ]
+          }
+        });
+      }
+    }
+
+    var bool = {
+      "must": must
+    };
+    if (!retrieveHidden) {
+      bool["must_not"] = {"term": {"hidden": true}};
     }
 
     return Promise.resolve(client.search({
@@ -314,10 +406,7 @@ var db = {
         "query": {
           "filtered" : {
               "filter" : {
-                  "bool": {
-                      "must": must,
-                      "must_not": {"term": {"friendStatus": 4}}
-                  }
+                  "bool": bool
               }
           }
         },
@@ -340,13 +429,13 @@ var db = {
                       "must": [
                           {"range": {
                               "birthday": {
-                                  "gt":  currentTime - user._source.ageIntMin * utils.C.YEAR,
-                                  "lt":  currentTime - user._source.ageIntMax * utils.C.YEAR
+                                  "gte": utils.birthday(user._source.ageIntMax),
+                                  "lte": utils.birthday(user._source.ageIntMin)
                               }
                           }},
                           {"range": {
                               "lastTimeFake": {
-                                  "lt":   currentTime - 20 * 60000
+                                  "lt":   currentTime - utils.C.HOUR / 3
                               }
                           }},
                           {"term": {

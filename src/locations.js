@@ -145,9 +145,9 @@ var Locations = {
           var pair = result.value();
           pair.location._source.processed = true;
           // Push only the locations that have locations nearby
-          if (pair.nearbyLocations.length > 0) {
-            locationsNearLocations.push(pair);
-          }
+          // if (pair.nearbyLocations.length > 0) {
+          locationsNearLocations.push(pair);
+          // }
         }
       });
       return Promise.resolve(locationsNearLocations);

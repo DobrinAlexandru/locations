@@ -81,6 +81,19 @@ var Notifications = {
     notifications.push(notification);
     return this.sendNotificationsToParse(notifications);
   },
+  sendUpdateFeedNotification: function(toUserId) {
+    var notifications = [];
+    var notification = {
+      toIds: [toUserId],
+      data: {
+        sound: "default",
+        type: "updateFeed",
+      }
+    };
+    // Push notification to list
+    notifications.push(notification);
+    return this.sendNotificationsToParse(notifications);
+  },
 
   listOfNames: function(users) {
     var names = _.pluck(users, "userName");

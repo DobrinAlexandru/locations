@@ -25,7 +25,31 @@ var Users = {
       upsert: upsertData,
       doc: data
     };
-    return dbh.updateObjectToDb(object);
+    return Promise.all([
+     this.updateBumpsIfNeeded(userId, data), 
+     dbh.updateObjectToDb(object)
+    ]).get(1);
+  },
+
+  updateBumpsIfNeeded: function(userId, data) {
+    if (data.birthday || data.ageIntMin || data.ageIntMax || data.gender || data.genderInt) {
+      var update = _.pick(data, "birthday", "ageIntMin", "ageIntMax", "gender", "genderInt");
+      // TODO maybe update all bumps with pagination or scroll
+      return dbh.loadBumps({userId: userId, sort: true, hidden: true}, true, 0, 2000).bind(this).then(function(bumps) {
+        bumps = bumps.hits.hits;
+        if (bumps.length < 1) {
+          return Promise.resolve({});
+        }
+        _.each(bumps, function(bump) {
+          bump.doc = {
+            user2: update
+          };
+        });
+        return dbh.updateListToDB(bumps);
+      })
+    } else {
+      return Promise.resolve({});
+    }
   },
   loadUsers: function(payload) {
     var usersIds = payload.usersIds;
@@ -83,7 +107,7 @@ var Users = {
     },
     birthday: function(object, value) {
       object.birthday = new Date(value).getTime();
-      var age = parseInt((Date.now() - object.birthday) / utils.C.YEAR);
+      var age = utils.age(object.birthday);
       object.ageIntMin = age - 3;
       object.ageIntMax = age + 3;
     },

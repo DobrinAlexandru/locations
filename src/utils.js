@@ -16,6 +16,12 @@ var Utils = {
       return b + a;
     }
   },
+  age: function(birthday) {
+    return parseInt((Date.now() - birthday) / Utils.C.YEAR);
+  },
+  birthday: function(age) {
+    return Date.now() - age * Utils.C.YEAR;
+  },
   getGenderKey: function(gender) {
     switch(gender) {
       case "female": return 1;

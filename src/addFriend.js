@@ -101,7 +101,7 @@ var AddFriend = {
       dbh.fetchObject(utils.keys(fromUserId, toUserId), "conversations", "conversation")
     ]).spread(function(bump1, bump2, conversation){
       var itemsToSave = [];
-      if (bump1) {
+      if (bump1._source) {
         bump1.doc = {
           friendStatus: 4,
           hidden: true,
@@ -109,24 +109,25 @@ var AddFriend = {
         };
         itemsToSave.push(bump1);
       }
-      if (bump2) {
+      if (bump2._source) {
         bump2.doc = {
           friendStatus: 4,
           hidden: true
         };
         itemsToSave.push(bump2);
       }
-      if (conversation) {
+      if (conversation._source) {
         conversation.doc = {
-          user1: _.extend(conversation._source.user1, {
+          user1: {
             deleted: true
-          }),
-          user2: _.extend(conversation._source.user1, {
+          },
+          user2: {
             deleted: true
-          })
+          }
         };
         itemsToSave.push(conversation);
       }
+      notificationsUtils.sendUpdateFeedNotification(toUserId);
       return dbh.updateListToDB(itemsToSave);
     });
   },
@@ -134,7 +135,9 @@ var AddFriend = {
     var userId = payload.currentUserId;
     var skip = payload.skip;
     var limit = payload.limit;
-    return dbh.loadBumps(userId, null, 2, false, skip, limit).bind(this).then(function(bumps) {
+    return dbh.fetchObject(userId, "users", "user").bind(this).then(function(user) {
+      return dbh.loadBumps({user: user, friendStatus: 2, sort: true, filters: true}, false, skip, limit);
+    }).then(function(bumps) {
       bumps = bumps.hits.hits;
       console.log("1 " + bumps.length);
       var otherUsersIds = utils.getOtherUsersIds(userId, bumps);
@@ -182,7 +185,6 @@ var AddFriend = {
     };
     bump2.doc = {
       friendStatus: 2,
-      seen: true,
     };
 
     return Promise.all([
@@ -217,7 +219,13 @@ var AddFriend = {
       return dbh.fetchObject(utils.keys(fromUserId, toUserId), "conversations", "conversation")
         .then(function(conversation) {
           if (!conversation._source) {
-            return conversationsUtils.createConversation(fromUserId, toUserId);
+            // Fetch users and create conversation
+            return dbh.fetchMultiObjects([fromUserId, toUserId], "users", "user").bind(this).then(function(users) {
+              users = users.docs;
+              fromUser = users[0];
+              toUser = users[1];
+              return conversationsUtils.createConversation(fromUser, toUser);
+            });
           } else {
             return Promise.resolve([]);
           }

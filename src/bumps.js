@@ -15,7 +15,6 @@ var Bumps = {
   processLocationsAndCreateOrUpdateBumps: function(payload) {
     // This function is called with small, medium and large radius until we created enough bumps
     var retryPromiseFunction = function(radius) {
-      console.log("2");
       payload.radius = radius;
       return requestLib({
         url: utils.C.LOCATIONS_IP + '/locations',
@@ -23,7 +22,7 @@ var Bumps = {
         json: true,
         body: payload
       }).bind(this).then(function(locations) {
-        console.log("3");
+        console.log("3 " + radius);
         locations = locations[1].locations;
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found
         return this.createOrUpdateBumps(payload.userId, locations, (radius === 2));
@@ -31,20 +30,24 @@ var Bumps = {
     }.bind(this);
     
     return retryPromiseFunction(0).then(function(result) {
-      // TODO <= 1
-      return result.bumpsToAdd <= 3 ? Promise.resolve(result) : retryPromiseFunction(1);
+      return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
     }).then(function(result) {
-      return result.bumpsToAdd <= 3 ? Promise.resolve(result) : retryPromiseFunction(2);
+      return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
     })
-    .catch(function(e) {
-      console.log(e);
-    });
   },
   loadNewsFeed: function(payload) {
     var userId = payload.currentUserId;
     var skip = payload.skip;
     var limit = payload.limit;
-    return dbh.loadBumps(userId, null, null, false, skip, limit).bind(this).then(function(bumps) {
+    var seen = payload.seen;
+    return dbh.fetchObject(userId, "users", "user").bind(this).then(function(user) {
+      user.doc = {
+        "feedLoadedTime": Date.now()
+      };
+      // Update user without blocking
+      dbh.updateObjectToDb(user);
+      return dbh.loadBumps({user: user, filters: true, sort: true, seen: seen}, false, skip, limit)
+    }).then(function(bumps) {
       bumps = bumps.hits.hits;
       console.log("1 " + bumps.length);
       var otherUsersIds = utils.getOtherUsersIds(userId, bumps);
@@ -72,7 +75,7 @@ var Bumps = {
   markBumpAsSeen: function(payload) {
     var userId1 = payload.userId1;
     var userId2 = payload.userId2;
-    return dbh.fetchObject(userId1 + userId2, "conversations", "conversation").then(function(bump) {
+    return dbh.fetchObject(userId1 + userId2, "bumps", "bump").then(function(bump) {
       bump.doc = {
         seen: true
       };
@@ -122,7 +125,8 @@ var Bumps = {
 
     var promises = [];
     // Increment nrBumps on user
-    if (bumps[0][0].length > 0 && user._source.nrBumps < 10) {
+    if (bumps[0][0].length > 0 && (user._source.nrBumps || 0) < 10) {
+      console.log("7.1 " + bumps[0][0].length);
       promises.push(dbh.increment(user, "nrBumps", bumps[0][0].length));
     }
     if (updatedBumps.length > 0) {
@@ -144,22 +148,28 @@ var Bumps = {
   */
   addFakeBumpsIfNeeded: function(userId, usersById, lastLocation, tryAddFakeBumps) {
     var user = usersById[userId];
-    var nrFakeUsersToPick = MAX_FAKE_USERS - user._source.nrBumps;
+    var nrFakeUsersToPick = MAX_FAKE_USERS - (user._source.nrBumps || 0);
     // Return number of bumps to add, even though we didn't created bumps using fake users
     // This way, at a higher level, we'll search for real locations at an increased radius
+    console.log("10 " + nrFakeUsersToPick);
     if (!tryAddFakeBumps || nrFakeUsersToPick <= 0) {
       return Promise.resolve({bumpsToAdd: nrFakeUsersToPick});
     }
 
     return dbh.pickAvailableFakeUsers(user, nrFakeUsersToPick).bind(this).then(function(fakeUsers) {
       fakeUsers = fakeUsers.hits.hits;
+      if (fakeUsers.length <= 0) {
+        console.log("10.1 no fake users found");
+        return Promise.resolve([{bumpsToAdd: nrFakeUsersToPick}]);
+      }
+      console.log("10.2 fake bumps found " + fakeUsers.length);
       var fakeNearbyLocations = _.map(fakeUsers, function(fakeUser) {
-        var fakeLocation = _.clone(lastLocation);
+        var fakeLocation = _.clone(lastLocation.location);
         fakeLocation._source.userId = fakeUser._id;
         return fakeLocation;
       });
       var fakeLocations = [{
-        location: lastLocation,
+        location: lastLocation.location,
         nearbyLocations: fakeNearbyLocations
       }];
 
@@ -184,7 +194,7 @@ var Bumps = {
   // Create bumps between userId and otherUsersIds, using the "reverse" variable as a way a -> b or a <- b
   createOneWayBumps: function(userId, otherUsersIds, usersById, locationsByUser, reverse) {
     console.log("6 " + JSON.stringify(otherUsersIds));
-    return dbh.loadBumps(userId, otherUsersIds, null, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
+    return dbh.loadBumps({userId: userId, otherUsersIds: otherUsersIds, hidden: true}, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
       var existingsBumps = bumps.hits.hits;
       console.log("6.2 existings bumps " + existingsBumps.length);
       // Optimisation since Date.now() is expensive
