@@ -55,6 +55,9 @@ var API = {
   apiUpdateUser: function(request) {
     return usersUtils.updateUser(request.payload);
   },
+  apiUpdateUsers: function(request) {
+    return usersUtils.updateUsers(request.payload);
+  },
   apiLoadUsers: function(request) {
     return usersUtils.loadUsers(request.payload);
   },
@@ -90,6 +93,23 @@ var API = {
 
   apiTest: function(request) {
     return notificationsUtils.sendNotificationsToParse(request.payload.notifications);
+  },
+
+  // This calls parse
+  // Parse fetches all dirty users & sends them to server to update
+  // Then parse updates the dirty keys on those users
+  forceUpdateUsers: function() {
+    return requestLib({
+      url: 'https://api.parse.com/1/functions/updateUsers',
+      method: 'POST',
+      headers: {
+        // TODO Change api keys
+        'X-Parse-Application-Id': '0aEW2TDQeZPog4Yq8hsxxE50gOJVGYmWNGLuo6px',
+        'X-Parse-REST-API-Key': 'TbVX6Aa32BxAyyWlgxDpo1vOIQzC4yOs0yv7rdAn'
+      },
+      json: true,
+      body: {}
+    });
   }
 };
 

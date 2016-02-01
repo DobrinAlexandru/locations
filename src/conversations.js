@@ -167,11 +167,13 @@ var Conversations = {
       });
   },
   createConversation: function(fromUser, toUser, msg, msgDate) {
+    msgDate = msgDate || Date.now();
     var conversation = {
       _index: "conversations",
       _type: "conversation",
       _id: utils.keys(fromUser._id, toUser._id),
       _source: {
+        createdAt: msgDate,
         user1: {
           userId: fromUser._id,
           firstName: fromUser._source.firstName,
@@ -189,7 +191,7 @@ var Conversations = {
         totalMsgs: msg ? 1 : 0,
         lastMsg: {
           text: msg,
-          time: msgDate || Date.now()
+          time: msgDate
         }
       }
     };

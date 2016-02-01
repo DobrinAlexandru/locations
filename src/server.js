@@ -20,6 +20,7 @@ var postApis = {
   "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
 
   "/api/updateUser":    "apiUpdateUser",
+  "/api/updateUsers":   "apiUpdateUsers",
   "/api/loadUsers":     "apiLoadUsers",
 
   "/api/loadConversations":   "apiLoadConversations",
@@ -64,7 +65,7 @@ function createRoutes(routes, method, cors) {
             console.error("result: " + JSON.stringify(e));
             console.log(">>End error" + key + " time " + (Date.now() - timerStart));
             reply(e);
-          })
+          });
           // .catch(function(e) {
           //   console.error("result: " + JSON.stringify(e));
           //   console.log(">>End error" + key + " time " + (Date.now() - timerStart));
@@ -90,6 +91,9 @@ server.register({
     else {
         server.start(function () {
             console.info('Server started at ' + server.info.uri);
+            apiUtils.forceUpdateUsers().then(function() {
+              console.log("Users have been updated");
+            });
         });
     }
 });

@@ -30,6 +30,12 @@ var Users = {
      dbh.updateObjectToDb(object)
     ]).get(1);
   },
+  updateUsers: function(userDatas) {
+    var promises = _.map(userDatas.updates, function(data) {
+      return this.updateUser(data);
+    }.bind(this));
+    return Promise.all(promises);
+  },
 
   updateBumpsIfNeeded: function(userId, data) {
     if (data.birthday || data.ageIntMin || data.ageIntMax || data.gender || data.genderInt) {
