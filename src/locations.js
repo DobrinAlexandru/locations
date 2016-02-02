@@ -235,6 +235,18 @@ var Locations = {
         latestLocation._source.timeEnd = newLocation._source.timeEnd;
         latestLocation._source.timeSpent = latestLocation._source.timeEnd - latestLocation._source.timeStart;
       } else {
+        latestLocation._source.timeSpent += parseInt(utils.C.HOUR / 2);
+        latestLocation._source.timeEnd += parseInt(utils.C.HOUR / 2);
+
+        // If previous location ends after the new location start, it means that the previous location had a bigger
+        // expiration than needed. In that case, we change previous location timeEnd so that it won't overlap with
+        // the new location.
+        if (newLocation._source.timeStart < latestLocation._source.timeEnd) {
+          // Combine old timeEnd with newTimeStart, but leave at least a 5 minutes gap
+          latestLocation._source.timeEnd = Math.max(newLocation._source.timeStart - parseInt(utils.C.HOUR / 12), latestLocation._source.timeStart);
+          latestLocation._source.timeSpent = latestLocation._source.timeEnd - latestLocation._source.timeStart;
+        }
+
         latestLocation = newLocation;
         compressedLocations.push(latestLocation);
       }
