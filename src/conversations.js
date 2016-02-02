@@ -249,6 +249,7 @@ var Conversations = {
           fbid: toUser._source.fbid
         },
         msg: msg,
+        convId: utils.keys(fromUser._id, toUser._id),
         type: 0
       }
     };

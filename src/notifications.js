@@ -2,6 +2,7 @@ var Promise = require("bluebird");
 // var assert = require('assert');
 var _ = require('underscore');
 var requestLib = Promise.promisify(require("request"));
+var utils = require('./utils');
 
 var Notifications = {
   sendNewBumpsNotification: function(newBumps, usersById) {
@@ -12,12 +13,16 @@ var Notifications = {
     _.each(bumpsByUser, function(userBumps, toUserId) {
       // Agregate data for notification
       var toUser = usersById[toUserId];
-      var newUsersPayload = _.map(userBumps, function(bump) {
+      var newUsersPayload = [];
+      _.each(userBumps, function(bump) {
         var user = usersById[bump._source.user2.userId];
-        return {
-          fbId: user._source.fbid,
-          userId: user._id,
-          userName: user._source.firstName
+        // Filter out users that don't match age & gender filters
+        if (utils.allFiltersMatch(toUser, user)) {
+          newUsersPayload.push({
+            fbId: user._source.fbid,
+            userId: user._id,
+            userName: user._source.firstName
+          });
         }
       });
       // If we have data for notification

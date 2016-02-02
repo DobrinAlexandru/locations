@@ -338,7 +338,7 @@ var db = {
               }
           }
         });
-        // Others are fall in my interests
+        // Others fall in my interests
         must.push({
           "range": {
               "user2.birthday": {

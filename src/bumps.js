@@ -111,7 +111,6 @@ var Bumps = {
         return this.saveBumpsAndSendNotifications(bumps, userId, usersById);
       }).then(function() {
         // Add fake users if nr of bumps is low
-        // TODO test
         return this.addFakeBumpsIfNeeded(userId, usersById, _.last(locations), tryAddFakeBumps);
       });
   },
