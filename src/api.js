@@ -104,8 +104,8 @@ var API = {
       method: 'POST',
       headers: {
         // TODO Change api keys
-        'X-Parse-Application-Id': '0aEW2TDQeZPog4Yq8hsxxE50gOJVGYmWNGLuo6px',
-        'X-Parse-REST-API-Key': 'TbVX6Aa32BxAyyWlgxDpo1vOIQzC4yOs0yv7rdAn'
+        'X-Parse-Application-Id': 'XxAKpRlTJIny9YsHIb1bdoCuWJhm4InfOgI2GvWB',
+        'X-Parse-REST-API-Key': 'pveAqS6L5HGGpytegzUKPLLeyO9xxgsfyF0EdRh5'
       },
       json: true,
       body: {}
