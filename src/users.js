@@ -117,6 +117,12 @@ var Users = {
       object.ageIntMin = age - 3;
       object.ageIntMax = age + 3;
     },
+    interested_min: function(object, value) {
+      object.ageIntMin = value;
+    },
+    interested_max: function(object, value) {
+      object.ageIntMax = value;
+    },
     gender: function(object, value) {
       object.gender = utils.getGenderKey(value);
     },
