@@ -15,34 +15,34 @@ server.connection({
 
 var postApis = {
   "/locations":         "locations",
-  "/api/locations":     "apiLocations",
-  "/api/loadNewsFeed":  "apiLoadNewsFeed",
-  "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
+  // "/api/locations":     "apiLocations",
+  // "/api/loadNewsFeed":  "apiLoadNewsFeed",
+  // "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
 
-  "/api/updateUser":    "apiUpdateUser",
-  "/api/updateUsers":   "apiUpdateUsers",
-  "/api/loadUsers":     "apiLoadUsers",
+  // "/api/updateUser":    "apiUpdateUser",
+  // "/api/updateUsers":   "apiUpdateUsers",
+  // "/api/loadUsers":     "apiLoadUsers",
 
-  "/api/loadConversations":   "apiLoadConversations",
-  "/api/loadMessages":        "apiLoadMessages",
-  "/api/sendMessage":         "apiSendMessage",
-  "/api/markConvAsRead":      "apiMarkConvAsRead",
-  "/api/deleteConv":          "apiDeleteConv",
+  // "/api/loadConversations":   "apiLoadConversations",
+  // "/api/loadMessages":        "apiLoadMessages",
+  // "/api/sendMessage":         "apiSendMessage",
+  // "/api/markConvAsRead":      "apiMarkConvAsRead",
+  // "/api/deleteConv":          "apiDeleteConv",
 
-  "/api/loadInbox":           "apiLoadInbox",
-  "/api/addFriend":           "apiAddFriend",
-  "/api/acceptFriend":        "apiAcceptFriend",
-  "/api/hideIntersection":    "apiHideIntersection",
+  // "/api/loadInbox":           "apiLoadInbox",
+  // "/api/addFriend":           "apiAddFriend",
+  // "/api/acceptFriend":        "apiAcceptFriend",
+  // "/api/hideIntersection":    "apiHideIntersection",
 
-  "/api/test":          "apiTest"
+  // "/api/test":          "apiTest"
 };
 
 var getApis = {
   "/userLocations":             "userLocations",
-  "/api/userLocations":         "apiUserLocations",
+  // "/api/userLocations":         "apiUserLocations",
   
   "/latestLocationsByUser":     "latestLocationsByUser",
-  "/api/latestLocationsByUser": "apiLatestLocationsByUser"
+  // "/api/latestLocationsByUser": "apiLatestLocationsByUser"
 };
 
 function createRoutes(routes, method, cors) {
@@ -91,9 +91,9 @@ server.register({
     else {
         server.start(function () {
             console.info('Server started at ' + server.info.uri);
-            apiUtils.forceUpdateUsers().then(function() {
-              console.log("Users have been updated");
-            });
+            // apiUtils.forceUpdateUsers().then(function() {
+            //   console.log("Users have been updated");
+            // });
         });
     }
 });
