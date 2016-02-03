@@ -55,7 +55,7 @@ var Utils = {
       } else if (user1._source.gender === 3) {
         return  user2._source.gender === user1._source.genderInt &&
                 user2._source.genderInt === 3;
-      } else if (user._source.genderInt === 3) {
+      } else if (user1._source.genderInt === 3) {
         return  user2._source.genderInt === 3 ||
                 user2._source.genderInt === user1._source.gender;
       } else {
@@ -70,11 +70,11 @@ var Utils = {
       return false;
     }
     // User1 falls in user 2 interest
-    return  user2._source.ageIntMax >=  utils.age(user1._source.birthday) &&
-            user2._source.ageIntMin <=  utils.age(user1._source.birthday) &&
+    return  user2._source.ageIntMax >=  Utils.age(user1._source.birthday) &&
+            user2._source.ageIntMin <=  Utils.age(user1._source.birthday) &&
     // User2 falls in user1 interest
-            user2._source.birthday >= utils.birthday(user1._source.ageIntMax) &&
-            user2._source.birthday <= utils.birthday(user1._source.ageIntMin);
+            user2._source.birthday >= Utils.birthday(user1._source.ageIntMax) &&
+            user2._source.birthday <= Utils.birthday(user1._source.ageIntMin);
   },
   allFiltersMatch: function(user1, user2) {
     return  Utils.genderFilterMatch(user1, user2) &&
