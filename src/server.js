@@ -65,12 +65,12 @@ function createRoutes(routes, method, cors) {
             console.error("result: " + JSON.stringify(e));
             console.log(">>End error" + key + " time " + (Date.now() - timerStart));
             reply(e);
+          })
+          .catch(function(e) {
+            console.error("result: " + JSON.stringify(e));
+            console.log(">>End error" + key + " time " + (Date.now() - timerStart));
+            reply(e);
           });
-          // .catch(function(e) {
-          //   console.error("result: " + JSON.stringify(e));
-          //   console.log(">>End error" + key + " time " + (Date.now() - timerStart));
-          //   reply(e);
-          // });
         },
         cors: cors
       }
