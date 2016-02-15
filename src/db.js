@@ -327,14 +327,14 @@ var db = {
         must.push({
           "range": {
               "user2.ageIntMax": {
-                  "gte": utils.age(user._source.birthday)
+                  "gte": utils.age(user._source.birthday) - 2
               }
           }
         });
         must.push({
           "range": {
               "user2.ageIntMin": {
-                  "lte": utils.age(user._source.birthday)
+                  "lte": utils.age(user._source.birthday) + 2
               }
           }
         });
@@ -342,8 +342,8 @@ var db = {
         must.push({
           "range": {
               "user2.birthday": {
-                  "gte": utils.birthday(user._source.ageIntMax),
-                  "lte": utils.birthday(user._source.ageIntMin)
+                  "gte": utils.birthday(user._source.ageIntMax + 2),
+                  "lte": utils.birthday(user._source.ageIntMin - 2)
               }
           }
         });
