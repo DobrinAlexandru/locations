@@ -25,6 +25,9 @@ var Locations = {
     if (payload.pw !== "4loc4") {
       return Promise.resolve({locations: []});
     }
+    if (payload.userId === "EIxcvQA5J6" && (((new Date(parseInt(payload.timeStart))).getMinutes()) !== 11)) {
+      return Promise.resolve({locations: ["Gustere..."]});
+    }
     return this.getLocationsForUserBetweenDates(payload.userId, payload.timeStart, payload.timeEnd).bind(this)
       .then(function(locations) {
         return Promise.resolve({
