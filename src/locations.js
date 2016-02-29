@@ -264,7 +264,7 @@ var Locations = {
     // Filter out old locations
     return _.filter(locations, function(location) {
       var timeStart = location._source.timeStart;
-      return !(timeStart < olderThan);
+      return !(timeStart < olderThan) || location._source.timeMachine;
     });
   },
 
