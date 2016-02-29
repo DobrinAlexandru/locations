@@ -179,6 +179,7 @@ var Locations = {
         _index: "locations",
         _type: "location",
         // _id: uuid.v1(),
+        timeMachine: location["timeMachine"],
         _source: {
           location: {
             lat: location["latitude"],
@@ -264,7 +265,7 @@ var Locations = {
     // Filter out old locations
     return _.filter(locations, function(location) {
       var timeStart = location._source.timeStart;
-      return !(timeStart < olderThan);
+      return !(timeStart < olderThan) || location.timeMachine;
     });
   },
 
