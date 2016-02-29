@@ -145,6 +145,9 @@ var Users = {
     fb_photos: function(object, value) {
       object.fbPhotos = value;
     },
+    profileUrl: function(object, value) {
+      object.profileUrl = value;
+    },
     picture_ratio: function(object, value) {
       object.pictureRatio = value;
     },
