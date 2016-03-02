@@ -11,6 +11,7 @@ var usersUtils = require('./users');
 var conversationsUtils = require('./conversations');
 var addFriendUtils = require('./addFriend');
 var utils = require('./utils');
+var classes = require('./classes');
 
 var API = {
   // GET API
@@ -90,6 +91,94 @@ var API = {
   apiHideIntersection: function(request) {
     return addFriendUtils.hideIntersection(request.payload);
   },
+
+  api2Locations: function(request) {
+    return bumpsUtils.processLocationsAndCreateOrUpdateBumps(request.payload).then(function(results) {
+      return Promise.resolve("success");
+    });
+  },
+
+  api2LoadNewsFeed: function(request) {
+    return bumpsUtils.loadNewsFeed(request.payload).then(function(results) {
+      results = _.map(results, function(pair) {
+        return new classes.WBump(pair.bump, pair.user, pair.conversation);
+      });
+      return Promise.resolve(results);
+    });
+  },
+  api2LoadConversations: function(request) {
+    return conversationsUtils.loadConversations(request.payload).then(function(results) {
+      results = _.map(results, function(pair) {
+        return new classes.WConversation(pair.conversation, pair.user, pair.bump);
+      });
+      return Promise.resolve(results);
+    });
+  },
+  api2LoadInbox: function(request) {
+    return addFriendUtils.loadInbox(request.payload).then(function(results) {
+      results = _.map(results, function(pair) {
+        return new classes.WInbox(pair.bump, pair.user1, pair.user2);
+      });
+      return Promise.resolve(results);
+    });
+  },
+  api2LoadUsers: function(request) {
+    return usersUtils.loadUsers(request.payload).then(function(results) {
+      results = _.map(results, function(user) {
+        return new classes.WUser(user);
+      });
+      return Promise.resolve(results);
+    });
+  },
+  api2LoadMessages: function(request) {
+    return conversationsUtils.loadMessages(request.payload).then(function(results) {
+      results = _.map(results, function(msg) {
+        return new classes.WMessage(msg);
+      });
+      return Promise.resolve(results);
+    });
+  },
+
+  api2SendMessage: function(request) {
+    return conversationsUtils.sendMessage(request.payload).then(function(results) {
+      results = new classes.WMessage(results);
+      return Promise.resolve(results);
+    });
+  },
+  api2DeleteConv: function(request) {
+    return conversationsUtils.deleteConversation(request.payload).then(function(results) {
+      results = new classes.WConversation(conv);
+      return Promise.resolve(results);
+    });
+  },
+
+  api2MarkConvAsRead: function(request) {
+    return conversationsUtils.markConversationAsRead(request.payload).then(function(results) {
+      return Promise.resolve({});
+    });
+  },
+  api2MarkBumpAsSeen: function(request) {
+    return bumpsUtils.markBumpAsSeen(request.payload).then(function(results) {
+      return Promise.resolve("success");
+    });
+  },
+
+  api2AddFriend: function(request) {
+    return addFriendUtils.addFriend(request.payload).then(function(results) {
+      return Promise.resolve("success");
+    });
+  },
+  api2AcceptFriend: function(request) {
+    return addFriendUtils.acceptFriend(request.payload).then(function(results) {
+      return Promise.resolve("success");
+    });
+  },
+  api2HideIntersection: function(request) {
+    return addFriendUtils.hideIntersection(request.payload).then(function(results) {
+      return Promise.resolve("success");
+    });
+  },
+
 
   apiTest: function(request) {
     return notificationsUtils.sendNotificationsToParse(request.payload.notifications);

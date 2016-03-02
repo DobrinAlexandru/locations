@@ -34,6 +34,25 @@ var postApis = {
   // "/api/acceptFriend":        "apiAcceptFriend",
   // "/api/hideIntersection":    "apiHideIntersection",
 
+  // "/api/2/locations":         "api2Locations",
+
+  // "/api/2/loadNewsFeed":      "api2LoadNewsFeed",
+  // "/api/2/loadConversations": "api2LoadConversations",
+  // "/api/2/loadInbox":         "api2LoadInbox",
+  // "/api/2/loadUsers":         "api2LoadUsers",
+  // "/api/2/loadMessages":      "api2LoadMessages",
+
+  // "/api/2/sendMessage":       "api2SendMessage",
+  // "/api/2/deleteConv":        "api2DeleteConv",
+
+  // "/api/2/markConvAsRead":    "api2MarkConvAsRead",
+  // "/api/2/markBumpAsSeen":    "api2MarkBumpAsSeen",
+
+  // "/api/2/addFriend":         "api2AddFriend",
+  // "/api/2/acceptFriend":      "api2AcceptFriend",
+  // "/api/2/hideIntersection":  "api2HideIntersection",
+
+
   // "/api/test":          "apiTest"
 };
 
