@@ -103,16 +103,17 @@ var Locations = {
     if (locations.length === 0) {
       return Promise.resolve([]);
     }
-
-    // We assign CUSTOM ID only to the LAST LOCATION. We let elasticsearch to provide ids to the others
-    // We need this in order to do locations saving and pointer saving in paralel.
-    var lastLocation = _.last(locations);
-    if (!lastLocation._id) lastLocation._id = uuid.v1();
-    // Create pointer to last user location
-    var pointerToLastUserLocation = dbh.createPointerObject(USERID_TO_LOCID, userId, lastLocation._id, "locations", "location");
-    // Attach to list of objects and save in bulk
-    locations.push(pointerToLastUserLocation);
-
+    // If not time machine
+    if (locations.length === 1 && locations[0].timeMachine) {
+      // We assign CUSTOM ID only to the LAST LOCATION. We let elasticsearch to provide ids to the others
+      // We need this in order to do locations saving and pointer saving in paralel.
+      var lastLocation = _.last(locations);
+      if (!lastLocation._id) lastLocation._id = uuid.v1();
+      // Create pointer to last user location
+      var pointerToLastUserLocation = dbh.createPointerObject(USERID_TO_LOCID, userId, lastLocation._id, "locations", "location");
+      // Attach to list of objects and save in bulk
+      locations.push(pointerToLastUserLocation);
+    }
     return dbh.saveListToDB(locations).then(function(result) {
         console.log("TIME save: " + (Date.now() - timerStart));
         return Promise.resolve();
@@ -175,6 +176,7 @@ var Locations = {
 
   mapLocationsToDBModel: function(locations, userId) {
     return _.map(locations, function(location) {
+      var c = location.timeMachine ? parseInt(utils.C.HOUR) : 0;
       return {
         _index: "locations",
         _type: "location",
@@ -185,9 +187,9 @@ var Locations = {
             lat: location["latitude"],
             lon: location["longitude"]
           },
-          timeStart:      location["time"],
-          timeEnd:        location["time"],
-          timeSpent:      0,
+          timeStart:      location["time"] - c,
+          timeEnd:        location["time"] + c,
+          timeSpent:      c * 2,
           accuracy:       location["accuracy"],
           userId:         userId
         }
@@ -208,6 +210,10 @@ var Locations = {
 
     if (locations.length === 0) {
       return compressedLocations;
+    }
+    // if time machine
+    if (locations.length === 1 && locations[0].timeMachine) {
+      return locations;
     }
     if (latestLocation._source) {
       locations = this.filterOlderLocations(locations, latestLocation._source.timeStart);
