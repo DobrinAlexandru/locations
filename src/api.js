@@ -94,7 +94,7 @@ var API = {
 
   api2Locations: function(request) {
     return bumpsUtils.processLocationsAndCreateOrUpdateBumps(request.payload).then(function(results) {
-      return Promise.resolve("success");
+      return Promise.resolve({status: "success"});
     });
   },
 
@@ -159,23 +159,23 @@ var API = {
   },
   api2MarkBumpAsSeen: function(request) {
     return bumpsUtils.markBumpAsSeen(request.payload).then(function(results) {
-      return Promise.resolve("success");
+      return Promise.resolve({status: {status: "success"}});
     });
   },
 
   api2AddFriend: function(request) {
     return addFriendUtils.addFriend(request.payload).then(function(results) {
-      return Promise.resolve("success");
+      return Promise.resolve({status: "success"});
     });
   },
   api2AcceptFriend: function(request) {
     return addFriendUtils.acceptFriend(request.payload).then(function(results) {
-      return Promise.resolve("success");
+      return Promise.resolve({status: "success"});
     });
   },
   api2HideIntersection: function(request) {
     return addFriendUtils.hideIntersection(request.payload).then(function(results) {
-      return Promise.resolve("success");
+      return Promise.resolve({status: "success"});
     });
   },
 
