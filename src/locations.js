@@ -104,7 +104,7 @@ var Locations = {
       return Promise.resolve([]);
     }
     // If not time machine
-    if (locations.length === 1 && locations[0].timeMachine) {
+    if (!(locations.length === 1 && locations[0].timeMachine)) {
       // We assign CUSTOM ID only to the LAST LOCATION. We let elasticsearch to provide ids to the others
       // We need this in order to do locations saving and pointer saving in paralel.
       var lastLocation = _.last(locations);
