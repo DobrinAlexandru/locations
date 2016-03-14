@@ -146,7 +146,7 @@ var API = {
     });
   },
   api2DeleteConv: function(request) {
-    return conversationsUtils.deleteConversation(request.payload).then(function(results) {
+    return conversationsUtils.deleteConversation(request.payload).then(function(conv) {
       results = new classes.WConversation(conv);
       return Promise.resolve(results);
     });
