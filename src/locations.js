@@ -7,7 +7,7 @@ var geolib = require('geolib');
 var uuid = require('node-uuid');
 var utils = require('./utils');
 
-var LOCATION_DIFFERENCE = 50;
+var LOCATION_DIFFERENCE = 75;
 var USERID_TO_LOCID = "useridToLocid";
 
 var Locations = {
@@ -84,6 +84,8 @@ var Locations = {
         console.log("TIME fetch latest: " + (Date.now() - timerStart));
         console.log("before compression: " + locations.length);
         locations = this.compressLocations(locations, latestLocation);
+        // TODO remove this when server is more stable
+        locations = _.last(locations, 10);
         console.log("after compression: " + locations.length);
         return Promise.resolve();
       })
