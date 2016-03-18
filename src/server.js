@@ -77,7 +77,7 @@ function createRoutes(routes, method, cors) {
           // console.log("payload: " + JSON.stringify(request.payload));
           // Call api method
           apiUtils[val](request).then(function(result) {
-            console.log("result: " + JSON.stringify(result));
+            // console.log("result: " + JSON.stringify(result));
             console.log(">>End ok" + key + " time " + (Date.now() - timerStart));
             reply(result);
           }).error(function(e) {
