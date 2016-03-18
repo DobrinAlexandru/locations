@@ -85,15 +85,15 @@ var Locations = {
         // console.log("before compression: " + locations.length);
         locations = this.compressLocations(locations, latestLocation);
         // TODO remove this when server is more stable
-        locations = _.last(locations, 1);
+        locations = _.last(locations, 10);
         // console.log("after compression: " + locations.length);
-        return Promise.resolve();
+        return Promise.resolve([]);
       })
-      .then(function() {
-        timerStart = Date.now();
-        return this.getLocationsNearLocations(locations, currentUserId, radius);
-        // return Promise.resolve([]);
-      })
+      // .then(function() {
+      //   timerStart = Date.now();
+      //   return this.getLocationsNearLocations(locations, currentUserId, radius);
+      //   // return Promise.resolve([]);
+      // })
       .then(function(locationsNearLocations) {
         // console.log("TIME locations nearby: " + (Date.now() - timerStart));
         // console.log("near loc: " + locationsNearLocations.length);

@@ -118,7 +118,7 @@ var Bumps = {
   },
 
   saveBumpsAndSendNotifications: function(bumps, userId, usersById) {
-    console.log("7 " + bumps);
+    // console.log("7 " + bumps);
     var user = usersById[userId];
     var createdBumps = bumps[0][0].concat(bumps[1][0]);
     var updatedBumps = bumps[0][1].concat(bumps[1][1]);
@@ -194,7 +194,7 @@ var Bumps = {
 
   // Create bumps between userId and otherUsersIds, using the "reverse" variable as a way a -> b or a <- b
   createOneWayBumps: function(userId, otherUsersIds, usersById, locationsByUser, reverse) {
-    console.log("6 " + JSON.stringify(otherUsersIds));
+    // console.log("6 " + JSON.stringify(otherUsersIds));
     return dbh.loadBumps({userId: userId, otherUsersIds: otherUsersIds, hidden: true}, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
       var existingsBumps = bumps.hits.hits;
       console.log("6.2 existings bumps " + existingsBumps.length);
@@ -206,7 +206,7 @@ var Bumps = {
 
       // Get users ids for witch we create a new bump
       var usersIdsWithoutBumps = _.difference(otherUsersIds, data.userIdsWithBumps);
-      console.log("9.0 ids without bumps " + JSON.stringify(usersIdsWithoutBumps));
+      // console.log("9.0 ids without bumps " + JSON.stringify(usersIdsWithoutBumps));
       // Create new bumps
       var createdBumps = this.createNewBumps(usersIdsWithoutBumps, userId, usersById, locationsByUser, currentTime, reverse);
       console.log("9 created " + createdBumps.length);
