@@ -81,12 +81,12 @@ var Locations = {
     
     var timerStart = Date.now();
     return dbh.fetchPointer(USERID_TO_LOCID, currentUserId).bind(this).then(function(latestLocation) {
-        console.log("TIME fetch latest: " + (Date.now() - timerStart));
-        console.log("before compression: " + locations.length);
+        // console.log("TIME fetch latest: " + (Date.now() - timerStart));
+        // console.log("before compression: " + locations.length);
         locations = this.compressLocations(locations, latestLocation);
         // TODO remove this when server is more stable
-        locations = _.last(locations, 10);
-        console.log("after compression: " + locations.length);
+        locations = _.last(locations, 1);
+        // console.log("after compression: " + locations.length);
         return Promise.resolve();
       })
       .then(function() {
@@ -95,8 +95,8 @@ var Locations = {
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
-        console.log("TIME locations nearby: " + (Date.now() - timerStart));
-        console.log("near loc: " + locationsNearLocations.length);
+        // console.log("TIME locations nearby: " + (Date.now() - timerStart));
+        // console.log("near loc: " + locationsNearLocations.length);
         // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
         return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
       })
@@ -170,7 +170,7 @@ var Locations = {
     var timerStart = Date.now();
     return dbh.getLocationsNearSingleLocation(location, currentUserId, radius).then(function(nearbyLocations) {
       console.log("TIME multiple: " + (Date.now() - timerStart));
-      console.log("nearby: " + JSON.stringify(nearbyLocations.hits.hits.length));
+      console.log("nearby: " + nearbyLocations.hits.hits.length);
       var object = {
         location: location,
         nearbyLocations: nearbyLocations.hits.hits
