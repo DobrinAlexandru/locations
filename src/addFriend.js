@@ -19,7 +19,7 @@ var AddFriend = {
       dbh.fetchObject(fromUserId + toUserId, "bumps", "bump"),
       dbh.fetchObject(toUserId + fromUserId, "bumps", "bump")
     ]).bind(this).spread(function(bump1, bump2) {
-      console.log("1 " + JSON.stringify(bump1));
+      // console.log("1 " + JSON.stringify(bump1));
        var switchPromise;
        switch(bump1._source.friendStatus) {
           case 3: {
