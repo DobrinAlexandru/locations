@@ -25,13 +25,14 @@ var Bumps = {
         console.log("3 " + radius);
         locations = locations[1].locations;
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found
-        return this.createOrUpdateBumps(payload.userId, locations, (radius === 1));
+        return this.createOrUpdateBumps(payload.userId, locations, (radius === 0));
       });
     }.bind(this);
     
-    return retryPromiseFunction(0).then(function(result) {
-      return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
-    });
+    return retryPromiseFunction(0);
+    // .then(function(result) {
+    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
+    // });
     // .then(function(result) {
     //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
     // })
