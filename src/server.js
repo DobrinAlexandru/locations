@@ -82,7 +82,8 @@ function createRoutes(routes, method, cors) {
             // console.log("result: " + JSON.stringify(result));
             console.log(">>End ok" + key + " time " + (Date.now() - timerStart));
             reply(result);
-          }).error(function(e) {
+          })
+          .error(function(e) {
             console.error("result: " + JSON.stringify(e));
             console.log(">>End error" + key + " time " + (Date.now() - timerStart));
             reply(e);

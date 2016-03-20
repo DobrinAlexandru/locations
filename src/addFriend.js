@@ -174,7 +174,7 @@ var AddFriend = {
     });
     // Filter out bad results
     results = _.filter(results, function(obj) {
-      return !!(obj.user1 && obj.user2);
+      return !!(obj.user1 && obj.user1._source && obj.user2 && obj.user2._source);
     });
     return results;
   },
