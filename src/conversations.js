@@ -47,7 +47,7 @@ var Conversations = {
     var newerThan = payload.newerThanDate;
     return dbh.loadMessages(userId, otherUserId, newerThan, skip, limit)
       .then(function(messages) {
-        messages = messages.hits.hits;
+        messages = messages.hits.hits || [];
         // Sort messages back in ascending order
         messages = _.sortBy(messages, function(message) {
           return message._source.createdAt;
@@ -152,7 +152,7 @@ var Conversations = {
     });
     // Filter out bad conversations
     results = _.filter(results, function(obj) {
-      return !!(obj.user && obj.bump);
+      return !!(obj.user && obj.user._source && obj.bump && obj.bump._source && obj.conversation && obj.conversation._source);
     });
     return results;
   },

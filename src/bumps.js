@@ -320,7 +320,7 @@ var Bumps = {
     });
     // Filter out bad conversations
     results = _.filter(results, function(obj) {
-      return !!(obj.user);
+      return !!(obj.user) && !!(obj.user._source) && !!(obj.bump && obj.bump._source);
     });
     console.log("4 " + results.length);
     return results;
