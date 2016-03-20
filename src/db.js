@@ -16,13 +16,14 @@ var TIME_BOUND = 24 * 3600000;
 
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
-  host: 'localhost:9200',
+  host: 'api.gointersect.com:9200',
   // log: 'trace'
   log : [{
     type: 'stdio',
     levels: ['error', 'warning'] // change these options
   }]
 });
+console.log("xxxxx bog xxxxx");
  
 var db = {
   saveListToDB: function(objects) {
