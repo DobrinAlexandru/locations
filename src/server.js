@@ -76,23 +76,31 @@ function createRoutes(routes, method, cors) {
           // Track time
           var timerStart = Date.now();
           console.log("\n<<Start " + key);
-          console.log("payload: " + JSON.stringify(request.payload));
+          // console.log("payload: " + JSON.stringify(request.payload));
           // Call api method
           apiUtils[val](request).then(function(result) {
             // console.log("result: " + JSON.stringify(result));
             console.log(">>End ok" + key + " time " + (Date.now() - timerStart));
             reply(result);
+          })
+          .error(function(e) {
+            console.error("result: " + JSON.stringify(e));
+            console.log(">>End error" + key + " time " + (Date.now() - timerStart));
+            if (val.startsWith("api2Load")) {
+              reply([]);
+            } else {
+              reply(e);
+            }
+          })
+          .catch(function(e) {
+            console.error("result: " + JSON.stringify(e));
+            console.log(">>End error" + key + " time " + (Date.now() - timerStart));
+            if (val.startsWith("api2Load")) {
+              reply([]);
+            } else {
+              reply(e);
+            }
           });
-          // .error(function(e) {
-          //   console.error("result: " + JSON.stringify(e));
-          //   console.log(">>End error" + key + " time " + (Date.now() - timerStart));
-          //   reply(e);
-          // });
-          // .catch(function(e) {
-          //   console.error("result: " + JSON.stringify(e));
-          //   console.log(">>End error" + key + " time " + (Date.now() - timerStart));
-          //   reply(e);
-          // });
         },
         cors: cors
       }

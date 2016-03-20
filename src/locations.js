@@ -88,14 +88,14 @@ var Locations = {
       })
       .then(function() {
         timerStart = Date.now();
-        return this.getLocationsNearLocations(_.last(locations, 1), currentUserId, radius);
+        return this.getLocationsNearLocations(_.last(locations, 10), currentUserId, radius);
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
         // console.log("TIME locations nearby: " + (Date.now() - timerStart));
-        // console.log("near loc: " + locationsNearLocations.length);
+        console.log("near loc: " + locationsNearLocations.length);
         // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
-        return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
+        return Promise.all([Promise.resolve(locationsNearLocations), this.saveLocations(locations, currentUserId)]);
       })
       // .then(function(results) {
       //   return Promise.reject();
@@ -157,6 +157,7 @@ var Locations = {
           // }
         }
       });
+      // console.log("near loc: " + JSON.stringify(locationsNearLocations));
       return Promise.resolve(locationsNearLocations);
     });
   },

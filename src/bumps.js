@@ -18,7 +18,8 @@ var Bumps = {
     var retryPromiseFunction = function(radius) {
       payload.radius = radius;
       return locationsUtils.handleLocationsRequest(payload).bind(this).then(function(locations) {
-        console.log("3 " + radius);
+        // console.log("3 " + JSON.stringify(locations));
+        locations = locations.locations;
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found
         return this.createOrUpdateBumps(payload.userId, locations, (radius === 0));
       });
@@ -45,7 +46,7 @@ var Bumps = {
       dbh.updateObjectToDb(user);
       return dbh.loadBumps({user: user, filters: true, sort: true, seen: seen}, false, skip, limit)
     }).then(function(bumps) {
-      bumps = bumps.hits.hits;
+      bumps = bumps.hits.hits || [];
       console.log("1 " + bumps.length);
       var otherUsersIds = utils.getOtherUsersIds(userId, bumps);
       if (bumps.length === 0) {
