@@ -2,6 +2,7 @@ var Hapi = require('hapi');
 
 var apiUtils = require('./api');
 
+// var heapdump = require('heapdump');
 var _ = require('underscore');
 var Promise = require("bluebird");
 
@@ -10,14 +11,14 @@ var options = {
 
 var server = new Hapi.Server();
 server.connection({
-  port: 8001,
+  port: process.env.PORT,
 });
 
 var postApis = {
-  "/locations":         "locations",
+  // "/locations":         "locations",
   // "/api/locations":     "apiLocations",
-  // "/api/loadNewsFeed":  "apiLoadNewsFeed",
-  // "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
+  "/api/loadNewsFeed":  "apiLoadNewsFeed",
+  "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
 
   // "/api/updateUser":    "apiUpdateUser",
   // "/api/updateUsers":   "apiUpdateUsers",
@@ -34,7 +35,7 @@ var postApis = {
   // "/api/acceptFriend":        "apiAcceptFriend",
   // "/api/hideIntersection":    "apiHideIntersection",
 
-  // "/api/2/locations":         "api2Locations",
+  "/api/2/locations":         "api2Locations",
 
   // "/api/2/loadNewsFeed":      "api2LoadNewsFeed",
   // "/api/2/loadConversations": "api2LoadConversations",
@@ -57,11 +58,12 @@ var postApis = {
 };
 
 var getApis = {
-  "/userLocations":             "userLocations",
-  // "/api/userLocations":         "apiUserLocations",
+  // "/userLocations":             "userLocations",
+  "/api/userLocations":         "apiUserLocations",
   
-  "/latestLocationsByUser":     "latestLocationsByUser",
-  // "/api/latestLocationsByUser": "apiLatestLocationsByUser"
+  // "/latestLocationsByUser":     "latestLocationsByUser",
+  "/api/latestLocationsByUser": "apiLatestLocationsByUser"
+
 };
 
 function createRoutes(routes, method, cors) {
@@ -74,7 +76,7 @@ function createRoutes(routes, method, cors) {
           // Track time
           var timerStart = Date.now();
           console.log("\n<<Start " + key);
-          // console.log("payload: " + JSON.stringify(request.payload));
+          console.log("payload: " + JSON.stringify(request.payload));
           // Call api method
           apiUtils[val](request).then(function(result) {
             // console.log("result: " + JSON.stringify(result));
@@ -85,11 +87,11 @@ function createRoutes(routes, method, cors) {
             console.log(">>End error" + key + " time " + (Date.now() - timerStart));
             reply(e);
           })
-          .catch(function(e) {
-            console.error("result: " + JSON.stringify(e));
-            console.log(">>End error" + key + " time " + (Date.now() - timerStart));
-            reply(e);
-          });
+          // .catch(function(e) {
+          //   console.error("result: " + JSON.stringify(e));
+          //   console.log(">>End error" + key + " time " + (Date.now() - timerStart));
+          //   reply(e);
+          // });
         },
         cors: cors
       }

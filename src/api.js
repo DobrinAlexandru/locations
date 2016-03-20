@@ -15,34 +15,36 @@ var classes = require('./classes');
 
 var API = {
   // GET API
-  userLocations: function(request) {
+  // userLocations: function(request) {
+  //   return locationsUtils.getLocationsForUser(request.query);
+  // },
+  // GET API
+  apiUserLocations: function(request) {
+    // return requestLib({
+    //   url: utils.C.LOCATIONS_IP + '/userLocations',
+    //   method: 'GET',
+    //   json: true,
+    //   qs: request.query
+    // }).get(1);
     return locationsUtils.getLocationsForUser(request.query);
   },
   // GET API
-  apiUserLocations: function(request) {
-    return requestLib({
-      url: utils.C.LOCATIONS_IP + '/userLocations',
-      method: 'GET',
-      json: true,
-      qs: request.query
-    }).get(1);
-  },
-  // GET API
-  latestLocationsByUser: function(request) {
-    return locationsUtils.getLatestLocationsByUser(request.query);
-  },
+  // latestLocationsByUser: function(request) {
+  //   return locationsUtils.getLatestLocationsByUser(request.query);
+  // },
   // GET API
   apiLatestLocationsByUser: function(request) {
-    return requestLib({
-      url: utils.C.LOCATIONS_IP + '/latestLocationsByUser',
-      method: 'GET',
-      json: true,
-      qs: request.query
-    }).get(1);
+    // return requestLib({
+    //   url: utils.C.LOCATIONS_IP + '/latestLocationsByUser',
+    //   method: 'GET',
+    //   json: true,
+    //   qs: request.query
+    // }).get(1);
+    return locationsUtils.getLatestLocationsByUser(request.query);
   },
-  locations: function(request) {
-    return locationsUtils.handleLocationsRequest(request.payload);
-  },
+  // locations: function(request) {
+  //   return locationsUtils.handleLocationsRequest(request.payload);
+  // },
   apiLocations: function(request) {
     return bumpsUtils.processLocationsAndCreateOrUpdateBumps(request.payload);
   },

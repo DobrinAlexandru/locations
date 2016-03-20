@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "bluebird": "^2.10.1",
+    "bluebird": "3.3.4",
     "geolib": "^2.0.18",
     "good": "^6.4.0",
     "good-console": "^5.1.0",

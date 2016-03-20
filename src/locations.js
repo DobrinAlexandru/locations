@@ -85,21 +85,24 @@ var Locations = {
         // console.log("before compression: " + locations.length);
         locations = this.compressLocations(locations, latestLocation);
         // TODO remove this when server is more stable
-        locations = _.last(locations, 10);
+        // locations = _.last(locations, 1);
         // console.log("after compression: " + locations.length);
         return Promise.resolve([]);
       })
-      // .then(function() {
-      //   timerStart = Date.now();
-      //   return this.getLocationsNearLocations(locations, currentUserId, radius);
-      //   // return Promise.resolve([]);
-      // })
+      .then(function() {
+        timerStart = Date.now();
+        return this.getLocationsNearLocations(_.last(locations, 1), currentUserId, radius);
+        // return Promise.resolve([]);
+      })
       .then(function(locationsNearLocations) {
         // console.log("TIME locations nearby: " + (Date.now() - timerStart));
         // console.log("near loc: " + locationsNearLocations.length);
         // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
         return [locationsNearLocations, this.saveLocations(locations, currentUserId)];
       })
+      // .then(function(results) {
+      //   return Promise.reject();
+      // })
       .get(0);
   },
 
@@ -140,11 +143,12 @@ var Locations = {
     if (locations.length === 0) {
       return Promise.resolve([]);
     }
+
     var tasks = _.map(locations, function(location) {
-      return this.getLocationsNearSingleLocation(location, currentUserId, radius);
+      return this.getLocationsNearSingleLocation(location, currentUserId, radius).reflect();
     }.bind(this));
 
-    return Promise.settle(tasks).bind(this).then(function(results) {
+    return Promise.all(tasks).bind(this).then(function(results) {
       var locationsNearLocations = [];
       _.each(results, function(result) {
         if (result.isFulfilled()) {

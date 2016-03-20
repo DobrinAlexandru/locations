@@ -6,6 +6,7 @@ var _ = require('underscore');
 var uuid = require('node-uuid');
 var requestLib = Promise.promisify(require("request"));
 
+var locationsUtils = require('./locations');
 var notificationsUtils = require('./notifications');
 var utils = require('./utils');
 
@@ -16,14 +17,8 @@ var Bumps = {
     // This function is called with small, medium and large radius until we created enough bumps
     var retryPromiseFunction = function(radius) {
       payload.radius = radius;
-      return requestLib({
-        url: utils.C.LOCATIONS_IP + '/locations',
-        method: 'POST',
-        json: true,
-        body: payload
-      }).bind(this).then(function(locations) {
+      return locationsUtils.handleLocationsRequest(payload).bind(this).then(function(locations) {
         console.log("3 " + radius);
-        locations = locations[1].locations;
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found
         return this.createOrUpdateBumps(payload.userId, locations, (radius === 0));
       });
