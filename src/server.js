@@ -89,6 +89,9 @@ function createRoutes(routes, method, cors) {
             if (val.startsWith("api2Load")) {
               reply([]);
             } else {
+              if (!e || !e.error) {
+                e = {error: "123"};
+              }
               reply(e);
             }
           })
@@ -98,6 +101,9 @@ function createRoutes(routes, method, cors) {
             if (val.startsWith("api2Load")) {
               reply([]);
             } else {
+              if (!e || !e.error) {
+                e = {error: "123"};
+              }
               reply(e);
             }
           });
