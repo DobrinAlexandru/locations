@@ -91,7 +91,7 @@ var Locations = {
       })
       .then(function() {
         timerStart = Date.now();
-        return this.getLocationsNearLocations(_.last(locations, 1), currentUserId, radius);
+        return this.getLocationsNearLocations(_.last(locations, 10), currentUserId, radius);
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
@@ -160,7 +160,7 @@ var Locations = {
           // }
         }
       });
-      console.log("near loc: " + JSON.stringify(locationsNearLocations));
+      // console.log("near loc: " + JSON.stringify(locationsNearLocations));
       return Promise.resolve(locationsNearLocations);
     });
   },
