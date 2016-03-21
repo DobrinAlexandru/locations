@@ -76,9 +76,10 @@ var Locations = {
     locations = _.sortBy(locations, "time");
     locations = this.mapLocationsToDBModel(locations, currentUserId);
     
-    if (Math.random() > 0.05) {
-      return this.saveLocations(locations, currentUserId);
-    }
+    // if (Math.random() > 1) {
+    //   return Promise.reject();
+    //   return this.saveLocations(locations, currentUserId);
+    // }
     var timerStart = Date.now();
     return dbh.fetchPointer(USERID_TO_LOCID, currentUserId).bind(this).then(function(latestLocation) {
         // console.log("TIME fetch latest: " + (Date.now() - timerStart));
@@ -91,7 +92,7 @@ var Locations = {
       })
       .then(function() {
         timerStart = Date.now();
-        return this.getLocationsNearLocations(_.last(locations, 1), currentUserId, radius);
+        return this.getLocationsNearLocations(_.last(locations, 10), currentUserId, radius);
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
