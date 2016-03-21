@@ -19,7 +19,7 @@
     "password": "4intersex4",
     //"port": "22",
     
-    "remote_path": "/root/workspace/locations-api",
+    "remote_path": "/home/intersect/workspace/locations-api",
     "ignore_regexes": [
         "\\.sublime-(project|workspace)", "sftp-config(-alt\\d?)?\\.json",
         "sftp-settings\\.json", "/venv/", "\\.svn/", "\\.hg/", "\\.git/",
