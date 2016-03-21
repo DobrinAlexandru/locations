@@ -17,6 +17,7 @@ var TIME_BOUND = 24 * 3600000;
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
   host: 'api.gointersect.com:9200',
+  maxSockets:2500,
   // log: 'trace'
   log : [{
     type: 'stdio',
