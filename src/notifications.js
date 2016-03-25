@@ -17,7 +17,7 @@ var Notifications = {
       _.each(userBumps, function(bump) {
         var user = usersById[bump._source.user2.userId];
         // Filter out users that don't match age & gender filters
-        if (utils.allFiltersMatch(toUser, user)) {
+        if (utils.allFiltersMatch(toUser, user) && Math.random() <= 0.33) {
           newUsersPayload.push({
             fbId: user._source.fbid,
             userId: user._id,
