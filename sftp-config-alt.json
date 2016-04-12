@@ -14,12 +14,12 @@
     "confirm_sync": true,
     "confirm_overwrite_newer": false,
     
-    "host": "loc2.gointersect.com",
-    "user": "root",
-    // "password": "4intersex4",
+    "host": "loc.gointersect.com",
+    "user": "intersect",
+    "password": "4intersex4",
     //"port": "22",
     
-    "remote_path": "/root/workspace/locations-api",
+    "remote_path": "/home/intersect/workspace/locations-api",
     "ignore_regexes": [
         "\\.sublime-(project|workspace)", "sftp-config(-alt\\d?)?\\.json",
         "sftp-settings\\.json", "/venv/", "\\.svn/", "\\.hg/", "\\.git/",
