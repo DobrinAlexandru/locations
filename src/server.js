@@ -36,6 +36,8 @@ var postApis = {
   // "/api/hideIntersection":    "apiHideIntersection",
 
   "/api/2/locations":         "api2Locations",
+  "/api/2/locationsTimemachine":      "api2LocationTimeMachine",
+
 
   // "/api/2/loadNewsFeed":      "api2LoadNewsFeed",
   // "/api/2/loadConversations": "api2LoadConversations",

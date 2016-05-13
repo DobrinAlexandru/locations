@@ -217,7 +217,57 @@ var Locations = {
       objectId: location._id
     });
   },
+  
+ getUserForTimeMachine: function(location, currentUserId, radius, gender, interestedInMin, interestedInMax, age) {
+    var timerStart = Date.now();
 
+    return this.getLocationsNearLocations(location, currentUserId, radius).then(function(nearbyLocations){
+         var otherUsersIds = [];
+         var locations  = nearbyLocations[0].nearbyLocations;
+         _.each(nearbyLocations[0].nearbyLocations, function(location) {
+            otherUsersIds.push(location._source.userId);
+          });
+         
+          return Promise.resolve(dbh.fetchMultiObjects(otherUsersIds, "users", "user"));
+        }).then(function(usersFetched){
+          usersFetched = usersFetched.docs;
+         //filter user
+          var filteredUsers  = [];
+            console.log("enteredUsers" + usersFetched.length);
+        
+          var userAge = age;
+          console.log("user age" + userAge);
+                     // If people didn't change the 6 years interval, add 4 more years to the interval.
+          var ageOffset = (userAge === interestedInMax - 3 && userAge === user.interestedInMin + 3) ? 2 : 0;
+          console.log("age offset" + ageOffset);
+          _.each(usersFetched, function(user) {
+              if(user != null ){  
+                var passLevel = 0;
+                if((user._source.gender == 3 || user._source.gender != gender) && (user._source.genderInt == gender || user._source.genderInt == 3) ){
+                  passLevel ++;
+                }
+                
+                 if (user._source.birthday) {
+                    if(user._source.ageIntMax >  userAge - ageOffset && user._source.ageIntMin < userAge + ageOffset 
+                      && user._source.birthday > utils.birthday(user._source.ageIntMax + ageOffset) && user._source.birthday < utils.birthday(user._source.ageIntMin - ageOffset)) {
+                       passLevel ++;
+                    }
+                 } else {
+                    passLevel ++;
+                 }
+                 if(passLevel  == 2){
+                   filteredUsers.push(user._source.fbid);
+                 }
+              }
+          });
+          var object = {
+             numberOfUsers: filteredUsers.length,
+             usersFbidList: filteredUsers
+          };
+         console.log("filtered users" + filteredUsers.length);
+         return Promise.resolve(object);
+    });
+  },
   compressLocations: function(locations, latestLocation) {
     console.log("last: " + latestLocation._id);
     var compressedLocations = [];
