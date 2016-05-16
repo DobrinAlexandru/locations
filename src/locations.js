@@ -223,7 +223,7 @@ var Locations = {
 
     return this.getLocationsNearLocations(location, currentUserId, radius).then(function(nearbyLocations){
          var otherUsersIds = [];
-         otherUsersIds.push(userId);
+         otherUsersIds.push(currentUserId);
          var locations  = nearbyLocations[0].nearbyLocations;
          _.each(nearbyLocations[0].nearbyLocations, function(location) {
             otherUsersIds.push(location._source.userId);
@@ -239,7 +239,7 @@ var Locations = {
           var userAge = age;
           console.log("user age" + userAge);
                      // If people didn't change the 6 years interval, add 4 more years to the interval.
-          var ageOffset = (userAge === interestedInMax - 3 && userAge === user.interestedInMin + 3) ? 2 : 0;
+          var ageOffset = (userAge === interestedInMax - 3 && userAge === interestedInMin + 3) ? 2 : 0;
           console.log("age offset" + ageOffset);
           var index = 0;
           var mainUser;
@@ -273,15 +273,19 @@ var Locations = {
           };
          console.log("filtered users" + filteredUsers.length);
          if(filteredUsers.length === 0 && timeMachineIndex == 1){
-            return Promise.all([filteredUsers, dbh.pickAvailableFakeUsers(mainUser, nrFakeUsersToPick, genderInt, gender)]);
-         }
-         return Promise.resolve(object, []);
+            return Promise.all([filteredUsers, dbh.pickAvailableFakeUsers(mainUser, 2, genderInt, gender)]);
+         } else {
+         return Promise.all([object, []]);
+        }
        }).spread(function(filteredUsers, fakeUsers){
-          console.log("fake users" + JSON.stringify(fakeUsers));
-          if(filteredUsers.length != 0){
-            return Promise.resolve(filteredUsers);
+          console.log("fake users picked" + fakeUsers.length);
+          if(fakeUsers.length != 0){
+            fakeUsers = fakeUsers.hits.hits;
+            console.log("1" + fakeUsers.length);
+            return Promise.resolve(fakeUsers);
           } else {
-
+            console.log("2");
+            return Promise.resolve(filteredUsers);
           }
           
       });

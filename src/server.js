@@ -96,18 +96,6 @@ function createRoutes(routes, method, cors) {
               }
               reply(e);
             }
-          })
-          .catch(function(e) {
-            console.error("result: " + JSON.stringify(e));
-            console.log(">>End error" + key + " time " + (Date.now() - timerStart));
-            if (val.startsWith("api2Load")) {
-              reply([]);
-            } else {
-              if (!e || !e.error) {
-                e = {error: "123"};
-              }
-              reply(e);
-            }
           });
         },
         cors: cors
