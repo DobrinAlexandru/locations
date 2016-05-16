@@ -104,7 +104,7 @@ var API = {
     console.log("enter timemachine" + JSON.stringify(request.payload));
     var locations =  locationsUtils.mapLocationsToDBModel(request.payload.locations, request.payload.userId);
     return locationsUtils.getUserForTimeMachine(locations, request.payload.userId, 0, request.payload.gender, 
-      request.payload.interesteInMin, request.payload.interestedInMax, request.payload.age).then(function(results) {
+      request.payload.interesteInMin, request.payload.interestedInMax, request.payload.age, request.payload.timeMachineIndex, request.payload.genderInt).then(function(results) {
           return Promise.resolve(results);
     });
   },

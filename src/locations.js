@@ -218,11 +218,12 @@ var Locations = {
     });
   },
   
- getUserForTimeMachine: function(location, currentUserId, radius, gender, interestedInMin, interestedInMax, age) {
+ getUserForTimeMachine: function(location, currentUserId, radius, gender, interestedInMin, interestedInMax, age,  timeMachineIndex, genderInt) {
     var timerStart = Date.now();
 
     return this.getLocationsNearLocations(location, currentUserId, radius).then(function(nearbyLocations){
          var otherUsersIds = [];
+         otherUsersIds.push(userId);
          var locations  = nearbyLocations[0].nearbyLocations;
          _.each(nearbyLocations[0].nearbyLocations, function(location) {
             otherUsersIds.push(location._source.userId);
@@ -240,7 +241,13 @@ var Locations = {
                      // If people didn't change the 6 years interval, add 4 more years to the interval.
           var ageOffset = (userAge === interestedInMax - 3 && userAge === user.interestedInMin + 3) ? 2 : 0;
           console.log("age offset" + ageOffset);
+          var index = 0;
+          var mainUser;
           _.each(usersFetched, function(user) {
+            if(index == 0){
+              mainUser = user;
+            }
+            index ++;
               if(user != null ){  
                 var passLevel = 0;
                 if((user._source.gender == 3 || user._source.gender != gender) && (user._source.genderInt == gender || user._source.genderInt == 3) ){
@@ -265,8 +272,19 @@ var Locations = {
              usersFbidList: filteredUsers
           };
          console.log("filtered users" + filteredUsers.length);
-         return Promise.resolve(object);
-    });
+         if(filteredUsers.length === 0 && timeMachineIndex == 1){
+            return Promise.all([filteredUsers, dbh.pickAvailableFakeUsers(mainUser, nrFakeUsersToPick, genderInt, gender)]);
+         }
+         return Promise.resolve(object, []);
+       }).spread(function(filteredUsers, fakeUsers){
+          console.log("fake users" + JSON.stringify(fakeUsers));
+          if(filteredUsers.length != 0){
+            return Promise.resolve(filteredUsers);
+          } else {
+
+          }
+          
+      });
   },
   compressLocations: function(locations, latestLocation) {
     console.log("last: " + latestLocation._id);
