@@ -417,8 +417,62 @@ var db = {
     }));
   },
 
-  pickAvailableFakeUsers: function(user, size) {
+  pickAvailableFakeUsers: function(user, size, genderInt, gender) {
     var currentTime = Date.now();
+    var must = [];
+    if (gender === 3 && genderInt === 3) {
+      console.log("a1");
+        must.push({
+          "term": {"genderInt": 3}
+        });
+      } else if (gender === 3) {
+        console.log("a2");
+        must.push({
+          "term": {"gender": genderInt}
+        });
+        must.push({
+          "term": {"genderInt": 3}
+        });
+      } else if (genderInt === 3) {
+         console.log("a3");
+        must.push({
+          "bool" : {
+            "should": [
+              {"term": {"genderInt": 3}},
+              {"term": {"genderInt": gender}}
+            ]
+          }
+        });
+      } else {
+        must.push({
+          "term": {"gender": genderInt}
+        });
+        must.push({
+          "bool" : {
+            "should": [
+              {"term": {"genderInt": 3}},
+              {"term": {"genderInt": gender}}
+            ]
+          }
+        });
+      }
+      must.push({"range": {"birthday": {
+                                  "gte": utils.birthday(user._source.ageIntMax),
+                                  "lte": utils.birthday(user._source.ageIntMin)
+                              }
+                          }});
+      must.push( {"range": {
+                              "lastTimeFake": {
+                                  "lt":   currentTime - utils.C.HOUR / 3
+                              }
+                          }});
+      must.push( {"term": {
+                              "isFake": true
+                          }});
+
+    var bool = {
+      "must": must
+    };
     return Promise.resolve(client.search({
       index: "users",
       type: "user",
@@ -427,24 +481,7 @@ var db = {
         "query": {
           "filtered" : {
               "filter" : {
-                  "bool": {
-                      "must": [
-                          {"range": {
-                              "birthday": {
-                                  "gte": utils.birthday(user._source.ageIntMax),
-                                  "lte": utils.birthday(user._source.ageIntMin)
-                              }
-                          }},
-                          {"range": {
-                              "lastTimeFake": {
-                                  "lt":   currentTime - utils.C.HOUR / 3
-                              }
-                          }},
-                          {"term": {
-                              "isFake": true
-                          }},
-                      ]
-                  }
+                  "bool":bool
               }
           }
         }

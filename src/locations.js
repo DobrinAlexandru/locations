@@ -241,7 +241,7 @@ var Locations = {
     });
   },
   
- getUserForTimeMachine: function(location, currentUserId, radius, gender, interestedInMin, interestedInMax, age,  timeMachineIndex, genderInt) {
+ getUserForTimeMachine: function(location, currentUserId, radius, gender, interestedInMin, interestedInMax, age,  tryFakeUsers, genderInt) {
     var timerStart = Date.now();
 
     return this.getLocationsNearLocations(location, currentUserId, radius).then(function(nearbyLocations){
@@ -251,16 +251,14 @@ var Locations = {
          _.each(nearbyLocations[0].nearbyLocations, function(location) {
             otherUsersIds.push(location._source.userId);
           });
-          console.log("aaaa" + JSON.stringify(otherUsersIds));
           return Promise.resolve(dbh.fetchMultiObjects(otherUsersIds, "users", "user"));
         }).then(function(usersFetched){
           usersFetched = usersFetched.docs;
          //filter user
           var filteredUsers  = [];
           console.log("enteredUsers" + usersFetched.length);
-        
           var userAge = age;
-           // If people didn't change the 6 years interval, add 4 more years to the interval.
+          // If people didn't change the 6 years interval, add 4 more years to the interval.
           var ageOffset =  2 ;var index = 0; var mainUser;
           _.each(usersFetched, function(user) {
             if(index == 0){
@@ -284,7 +282,8 @@ var Locations = {
              numberOfUsers: filteredUsers.length,
              usersFbidList: filteredUsers
           };
-          if(filteredUsers.length === 0 && timeMachineIndex == 1){
+
+          if(filteredUsers.length === 0 && tryFakeUsers){
             mainUser._source.ageIntMin = interestedInMin;
             mainUser._source.ageIntMax = interestedInMax;
             return Promise.all([filteredUsers, dbh.pickAvailableFakeUsers(mainUser, 5, genderInt, gender)]);
@@ -292,31 +291,36 @@ var Locations = {
          return Promise.all([object, []]);
          }
        }).spread(function(filteredUsers, fakeUsers){
-          console.log("fake users picked" + fakeUsers.length);
           if(fakeUsers.length != 0){
             fakeUsers = fakeUsers.hits.hits;
-            console.log("1" + fakeUsers.length);
-            // update lastTimeFake for used fake users
-            var currentTime = Date.now();
+            var object = {};
 
-            var fakeNearbyLocations = this.createFakeLocationForFakeUsers(fakeUsers, location[0]._source.location.lat, location[0]._source.location.lon, location[0]._source.timeStart);
-            
-            var fakeUsersUpdates = _.map(fakeUsers, function(fakeUser) {
-              var update = _.pick(fakeUser, "_index", "_type", "_id");
-              update.doc = {
-                lastTimeFake: currentTime
-              };
-              return update;
-            });
-            var filteredUsers2 = utils.getFbIdListFromListOfUsers(fakeUsers);
-            var object = {
-             numberOfUsers: filteredUsers2.length,
-             usersFbidList: filteredUsers2
-            };
-            
+            if(fakeUsers != null && fakeUsers.length > 0 ) {
+                // update lastTimeFake for used fake users
+                var currentTime = Date.now();
+
+                var fakeNearbyLocations = this.createFakeLocationForFakeUsers(fakeUsers, location[0]._source.location.lat, location[0]._source.location.lon, location[0]._source.timeStart);
+                
+                var fakeUsersUpdates = _.map(fakeUsers, function(fakeUser) {
+                  var update = _.pick(fakeUser, "_index", "_type", "_id");
+                  update.doc = {
+                    lastTimeFake: currentTime
+                  };
+                  return update;
+                });
+                var filteredUsers2 = utils.getFbIdListFromListOfUsers(fakeUsers);
+                 object = {
+                 numberOfUsers: filteredUsers2.length,
+                 usersFbidList: filteredUsers2
+                };
+            } else {
+                object = {
+                 numberOfUsers: 0,
+                 usersFbidList: []
+                };
+            }
             return Promise.all([object, dbh.updateListToDB(fakeUsersUpdates), dbh.saveListToDB(fakeNearbyLocations)]);
           } else {
-            console.log("2");
             return Promise.all([filteredUsers,[],[]]);
           }
           
