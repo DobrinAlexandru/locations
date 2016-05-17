@@ -79,6 +79,12 @@ var Utils = {
   allFiltersMatch: function(user1, user2) {
     return  Utils.genderFilterMatch(user1, user2) &&
             Utils.ageFilterMatch(user1, user2);
+  },
+  getFbIdListFromListOfUsers: function(users) {
+     return _.map(users, function(user) {
+        console.log("usereee" + JSON.stringify(user));
+        return user._source.fbid;
+    });
   }
 };
 

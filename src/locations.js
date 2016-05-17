@@ -210,6 +210,29 @@ var Locations = {
       };
     });
   },
+
+   createFakeLocationForFakeUsers: function(fakeUsers, latitude, longitude, time) {
+     return _.map(fakeUsers, function(fakeUser) {
+      var c = parseInt(utils.C.HOUR) ;
+       return {
+          _index: "locations",
+          _type: "location",
+           //_id: uuid.v1(),
+          timeMachine: true,
+          _source: {
+            location: {
+              lat: latitude,
+              lon: longitude
+            },
+            timeStart:      time - c,
+            timeEnd:       time + c,
+            timeSpent:      c * 2,
+            accuracy:      50,
+            userId:         fakeUser._id
+          }
+        };
+    });
+  },
   getLocationFromDbModel: function(location) {
     return _.extend({}, location._source, {
       latitude: location._source.location.lat,
@@ -228,68 +251,80 @@ var Locations = {
          _.each(nearbyLocations[0].nearbyLocations, function(location) {
             otherUsersIds.push(location._source.userId);
           });
-         
+          console.log("aaaa" + JSON.stringify(otherUsersIds));
           return Promise.resolve(dbh.fetchMultiObjects(otherUsersIds, "users", "user"));
         }).then(function(usersFetched){
           usersFetched = usersFetched.docs;
          //filter user
           var filteredUsers  = [];
-            console.log("enteredUsers" + usersFetched.length);
+          console.log("enteredUsers" + usersFetched.length);
         
           var userAge = age;
-          console.log("user age" + userAge);
-                     // If people didn't change the 6 years interval, add 4 more years to the interval.
-          var ageOffset = (userAge === interestedInMax - 3 && userAge === interestedInMin + 3) ? 2 : 0;
-          console.log("age offset" + ageOffset);
-          var index = 0;
-          var mainUser;
+           // If people didn't change the 6 years interval, add 4 more years to the interval.
+          var ageOffset =  2 ;var index = 0; var mainUser;
           _.each(usersFetched, function(user) {
             if(index == 0){
-              mainUser = user;
-            }
-            index ++;
+              mainUser = user; mainUser._source.gender = gender; mainUser._source.genderInt =  genderInt; index ++;
+            } else {
               if(user != null ){  
-                var passLevel = 0;
-                if((user._source.gender == 3 || user._source.gender != gender) && (user._source.genderInt == gender || user._source.genderInt == 3) ){
-                  passLevel ++;
-                }
-                
-                 if (user._source.birthday) {
+                if(utils.genderFilterMatch(user, mainUser)){
+                  if (user._source.birthday) {
                     if(user._source.ageIntMax >  userAge - ageOffset && user._source.ageIntMin < userAge + ageOffset 
                       && user._source.birthday > utils.birthday(user._source.ageIntMax + ageOffset) && user._source.birthday < utils.birthday(user._source.ageIntMin - ageOffset)) {
-                       passLevel ++;
+                       filteredUsers.push(user._source.fbid);
                     }
                  } else {
-                    passLevel ++;
+                     filteredUsers.push(user._source.fbid);
                  }
-                 if(passLevel  == 2){
-                   filteredUsers.push(user._source.fbid);
-                 }
+                } 
               }
+            }
           });
           var object = {
              numberOfUsers: filteredUsers.length,
              usersFbidList: filteredUsers
           };
-         console.log("filtered users" + filteredUsers.length);
-         if(filteredUsers.length === 0 && timeMachineIndex == 1){
-            return Promise.all([filteredUsers, dbh.pickAvailableFakeUsers(mainUser, 2, genderInt, gender)]);
+          if(filteredUsers.length === 0 && timeMachineIndex == 1){
+            mainUser._source.ageIntMin = interestedInMin;
+            mainUser._source.ageIntMax = interestedInMax;
+            return Promise.all([filteredUsers, dbh.pickAvailableFakeUsers(mainUser, 5, genderInt, gender)]);
          } else {
          return Promise.all([object, []]);
-        }
+         }
        }).spread(function(filteredUsers, fakeUsers){
           console.log("fake users picked" + fakeUsers.length);
           if(fakeUsers.length != 0){
             fakeUsers = fakeUsers.hits.hits;
             console.log("1" + fakeUsers.length);
-            return Promise.resolve(fakeUsers);
+            // update lastTimeFake for used fake users
+            var currentTime = Date.now();
+
+            var fakeNearbyLocations = this.createFakeLocationForFakeUsers(fakeUsers, location[0]._source.location.lat, location[0]._source.location.lon, location[0]._source.timeStart);
+            
+            var fakeUsersUpdates = _.map(fakeUsers, function(fakeUser) {
+              var update = _.pick(fakeUser, "_index", "_type", "_id");
+              update.doc = {
+                lastTimeFake: currentTime
+              };
+              return update;
+            });
+            var filteredUsers2 = utils.getFbIdListFromListOfUsers(fakeUsers);
+            var object = {
+             numberOfUsers: filteredUsers2.length,
+             usersFbidList: filteredUsers2
+            };
+            
+            return Promise.all([object, dbh.updateListToDB(fakeUsersUpdates), dbh.saveListToDB(fakeNearbyLocations)]);
           } else {
             console.log("2");
-            return Promise.resolve(filteredUsers);
+            return Promise.all([filteredUsers,[],[]]);
           }
           
+      }).spread(function(filteredUsers, updateState1, updateState2){
+          return Promise.resolve(filteredUsers);
       });
   },
+
   compressLocations: function(locations, latestLocation) {
     console.log("last: " + latestLocation._id);
     var compressedLocations = [];
