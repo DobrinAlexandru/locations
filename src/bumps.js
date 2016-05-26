@@ -328,4 +328,147 @@ var Bumps = {
   },
 };
 
+   createOrUpdateBumpsBetweenMacAndMac: function(userId, macobjects, tryAddFakeBumps) {
+    var macObjectsByUser = this.getMacsByUser(macobjects, userId);
+    var otherUsersIds = _.keys(macObjectsByUser);
+    var usersIds = otherUsersIds.concat(userId);
+    var usersById = {};
+    // Fetch users
+    console.log("createorUpdate bumps mac-mac" + JSON.stringify(otherUsersIds));
+    return this.fetchUsersAndCreateBumps(userId, usersIds, usersById, otherUsersIds, macObjectsByUser, false, null, tryAddFakeBumps);
+  },
+
+  fetchUsersAndCreateBumps : function(userId, usersIds, usersById, otherUsersIds, locationsByUser, isBetweenLocationAndLocation, locations, tryAddFakeBumps){
+       console.log("\nb3");   
+       return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
+        users = users.docs;
+        console.log("5 " + users.length);
+        // Group users by id
+        usersById = _.object(_.map(users, function(user) {
+          return [user._id, user];
+        }));
+        // console.log("5.1 " + JSON.stringify(usersById));
+        // TODO handle empty lists
+        if(isBetweenLocationAndLocation){
+            return Promise.all([
+                    this.createOneWayBumps(userId, otherUsersIds, usersById, locationsByUser, false),
+                    this.createOneWayBumps(userId, otherUsersIds, usersById, locationsByUser, true),
+                  ]);
+        } else {
+         return Promise.all([
+          this.createOneWayBumpsBetweenMacAndMac(userId, otherUsersIds, usersById, locationsByUser, false),
+          this.createOneWayBumpsBetweenMacAndMac(userId, otherUsersIds, usersById, locationsByUser, true),
+        ]);
+        }
+       
+      }).then(function(bumps) {
+        console.log("\nb4");
+        // Save all bumps, Send notification, Increment nrBumps on user
+        return this.saveBumpsAndSendNotifications(bumps, userId, usersById);
+      }).then(function() {
+        console.log("\nb5");
+        // Add fake users if nr of bumps is low
+        if(locations != null)
+           return this.addFakeBumpsIfNeeded(userId, usersById, _.last(locations), tryAddFakeBumps);
+        else
+          return Promise.resolve({});
+      });
+  },
+
+  createOneWayBumpsBetweenMacAndMac: function(userId, otherUsersIds, usersById, macObjectsByUser, reverse) {
+    console.log("6 mac - mac " + JSON.stringify(otherUsersIds));
+    return dbh.loadBumps({userId: userId, otherUsersIds: otherUsersIds, hidden: true}, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
+      var existingsBumps = bumps.hits.hits;
+      console.log("6.2 existings bumps mac mac" + existingsBumps.length);
+      // Optimisation since Date.now() is expensive
+      var currentTime = Date.now();
+      // Update existings bumps
+      var data = this.updateExistingsBumpsBetweenMacAndMac(existingsBumps, userId, usersById, macObjectsByUser, currentTime, reverse);
+      var updatedBumps = data.updatedBumps;
+
+      // Get users ids for witch we create a new bump
+      var usersIdsWithoutBumps = _.difference(otherUsersIds, data.userIdsWithBumps);
+      console.log("9.0 ids without bumps mac mac " + JSON.stringify(usersIdsWithoutBumps));
+      // Create new bumps
+      var createdBumps = this.createNewBumpsBetweenMacAndMac(usersIdsWithoutBumps, userId, usersById, macObjectsByUser, currentTime, reverse);
+      console.log("9 created mac mac" + createdBumps.length);
+      console.log("9 updated mac mac" + updatedBumps.length);
+
+      return Promise.resolve([createdBumps, updatedBumps]);
+    });
+  },
+
+   updateExistingsBumpsBetweenMacAndMac: function(existingsBumps, userId, usersById, macObjectsByUser, currentTime, reverse) {
+    var halfDayAgo = Date.now() - utils.C.DAY / 2;
+    var updatedBumps = [];
+    var userIdsWithBumps = [];
+    _.each(existingsBumps, function(bump) {
+      var otherUserId = reverse ? bump._source.user1.userId : bump._source.user2.userId;
+      var user1 = !reverse ? usersById[userId] : usersById[otherUserId];
+      var user2 = reverse ? usersById[userId] : usersById[otherUserId];
+      // Check if enough time passed to update bump
+      if (bump._source.updatedAt < halfDayAgo) {
+        this.updateExistingBumpBetweenMacAndMac(bump, user1, user2, macObjectsByUser[otherUserId], currentTime, reverse, true);
+        updatedBumps.push(bump);
+      }
+      // Keep users ids from existing bumps
+      userIdsWithBumps.push(otherUserId);
+    }.bind(this));
+    return {
+      updatedBumps: updatedBumps,
+      userIdsWithBumps: userIdsWithBumps
+    };
+  },
+
+   createNewBumpBetweenMacAndMac: function(user1, user2, locationsPairs, currentTime, reverse) {
+    var bump = {
+      _index: "bumps",
+      _type: "bump",
+      _id: user1._id + user2._id,
+      _source: {
+        createdAt: currentTime,
+        updatedAt: currentTime,
+        seen: false
+      }
+    };
+    return this.updateExistingBumpBetweenMacAndMac(bump, user1, user2, locationsPairs, currentTime, reverse);
+  },
+
+   updateExistingBumpBetweenMacAndMac: function(bump, user1, user2, macsByUser, currentTime, reverse, treatAsUpdate) {
+   // var latestLocation = _.max(locationsPairs, function(pair) {
+  //    return !reverse ? pair.location._source.timeStart : pair.nearbyLocation._source.timeStart;
+  //  });
+  //  latestLocation = !reverse ? latestLocation.location : latestLocation.nearbyLocation;
+
+    var update = {
+      updatedAt:    currentTime,
+      nrBumps:      (bump._source.nrBumps || 0) + 1,
+  //    locationTime: latestLocation._source.timeStart,
+   //   location:     latestLocation._source.location,
+      user1:        {
+        userId: user1._id
+      },
+      user2:        _.extend(_.pick(user2._source, "firstName", "birthday", "ageIntMin", "ageIntMax", "gender", "genderInt"), {
+        userId: user2._id
+      })
+    };
+    
+    _.extend(bump._source, update);
+    if (treatAsUpdate) {
+      bump.doc = update;
+    }
+    return bump;
+  },
+  getMacsByUser: function(macobjects, excludeUserId) {
+      var macsByUser = {};
+      _.each(macobjects, function(macobject) {
+          if(!macsByUser[macobject._source.userId] && macobject._source.userId != excludeUserId) {
+              macsByUser[macobject._source.userId] = [];
+              macsByUser[macobject._source.userId] = macobject._source.address;
+              console.log(" 5 user id found\n" + macobject._source.userId);
+          }
+      });
+      return macsByUser;
+    }
+
 module.exports = Bumps;

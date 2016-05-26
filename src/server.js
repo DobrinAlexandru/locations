@@ -17,6 +17,7 @@ server.connection({
 var postApis = {
   // "/locations":         "locations",
   "/api/locations":     "apiLocations",
+  "/api/macObjects":    "apiMacObjects",
   // "/api/loadNewsFeed":  "apiLoadNewsFeed",
   // "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
 
