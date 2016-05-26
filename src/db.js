@@ -16,7 +16,7 @@ var TIME_BOUND = 24 * 3600000;
 
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
-  host: 'api.gointersect.com:9200',
+  host: 'localhost:9200',
   maxSockets:2500,
   // log: 'trace'
   log : [{
@@ -533,6 +533,18 @@ var db = {
       }
     }));
   },
+
+   fetchPointerList: function(pointerType, fromId) {
+    console.log("fetch pointer list");
+     return this.fetchObject(fromId, "pointers", pointerType).bind(this).then(function(pointer) {
+      console.log("pointers list fetched: " + JSON.stringify(pointer));
+      return pointer._source ? this.fetchMultiObjects(pointer._source.id, "macobjects", "macobject") : Promise.resolve({});
+    }, function(error) {
+      console.log("error" + JSON.stringify(error))
+      return Promise.reject(error);
+    });
+  },
+
   loadMessages: function(userId, otherUserId, newerThan, skip, size) {
     var must1 = [
       {"term":  {"user1.userId": userId}},

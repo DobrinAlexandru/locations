@@ -47,6 +47,7 @@ var API = {
   //   return locationsUtils.handleLocationsRequest(request.payload);
   // },
   apiMacObjects: function(request) {
+    console.log("macobjects api");
     return macObjectsUtils.handleLocationsRequest(request.payload);
   },
   apiLocations: function(request) {

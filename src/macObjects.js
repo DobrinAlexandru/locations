@@ -42,15 +42,7 @@ var macobjects = {
           console.log("\nmactabels before create bumps" + JSON.stringify(macTabelObjects.length));
           console.log("\nnew macobjects  before create bumps" + newMacObjects.length);
           return Promise.all([this.saveOrUpdateMacTabel(macTabelObjects, macobjects), bumpsUtils.createOrUpdateBumpsBetweenMacAndMac(currentUserId, newMacObjects, false), this.saveMacObjects(macobjects, currentUserId), macobjects]).bind(this);
-       }).bind(this).spread(function(mactabels, bumpsCreatStatus, macobjectsSaveStatus, macobjects){
-          if(mactabels.length > 0 && macobjects.length > 0) {// LATER
-            console.log("try to make bump btw MAC - LOC");
-            return bumpsUtils.processMacAndLocation(currentUserId, mactabels, macobjects, false);
-           }
-           else {
-             return Promise.resolve("cant make MAC-lOC bumps");
-           }
-        });
+       });
     });
   },
 

@@ -326,7 +326,6 @@ var Bumps = {
     console.log("4 " + results.length);
     return results;
   },
-};
 
    createOrUpdateBumpsBetweenMacAndMac: function(userId, macobjects, tryAddFakeBumps) {
     var macObjectsByUser = this.getMacsByUser(macobjects, userId);
@@ -470,5 +469,5 @@ var Bumps = {
       });
       return macsByUser;
     }
-
+};
 module.exports = Bumps;
