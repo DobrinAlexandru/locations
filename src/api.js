@@ -5,7 +5,6 @@ var _ = require('underscore');
 var requestLib = Promise.promisify(require("request"));
 
 var locationsUtils = require('./locations');
-var macObjectsUtils = require('./macObjects');
 var bumpsUtils = require('./bumps');
 var notificationsUtils = require('./notifications');
 var usersUtils = require('./users');

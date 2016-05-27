@@ -5,7 +5,7 @@ var Promise = require("bluebird");
 var _ = require('underscore');
 var uuid = require('node-uuid');
 var requestLib = Promise.promisify(require("request"));
-var macObjectsUtils = require('./macobjects');
+var macObjectsUtils = require('./macids');
 var locationsUtils = require('./locations');
 var notificationsUtils = require('./notifications');
 var utils = require('./utils');
@@ -37,7 +37,7 @@ var Bumps = {
   processMacAddressAndCreateOrUpdateBumps: function(payload) {
     // This function is called with small, medium and large radius until we created enough bumps
     var retryPromiseFunction = function(radius) {
-      payload.radius = radius;
+      console.log("payload" + JSON.stringify(payload.macObjects))
       return macObjectsUtils.handleMacObjectsRequest(payload).bind(this).then(function(macObjects) {
         // console.log("3 " + JSON.stringify(locations));
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found

@@ -10,7 +10,7 @@ var bumpsUtils = require('./bumps');
 var LOCATION_DIFFERENCE = 50;
 var USERID_TO_LOCID = "useridToLocid";
 var USERID_TO_MACID = "useridToMacId";
-var macobjects = {
+var Wifis = {
   handleMacObjectsRequest: function(payload) {
     console.log("0 payload - macobjects size" +  JSON.stringify(payload.macObjects.length))
     return this.processMacObject(payload.macObjects, payload.userId).bind(this)
@@ -560,4 +560,4 @@ var macobjects = {
   }
 };
 
-module.exports = macobjects;
+module.exports = Wifis;
