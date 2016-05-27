@@ -21,7 +21,7 @@ var macobjects = {
 
   processMacObject: function(macobjects, currentUserId) {
     macobjects = this.mapLocationsToDBModel(macobjects, currentUserId);
-
+    console.log("")
 
    return dbh.fetchPointerList(USERID_TO_MACID, currentUserId).bind(this).then(function(latestmacobjects) {
       console.log("\n\npointers list fetched \n\n" + JSON.stringify(latestmacobjects.length));
