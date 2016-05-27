@@ -45,10 +45,12 @@ var API = {
   },
   // locations: function(request) {
   //   return locationsUtils.handleLocationsRequest(request.payload);
-  // },
+  // },api2MacObjects
   apiMacObjects: function(request) {
     console.log("macobjects api");
-    return macObjectsUtils.handleLocationsRequest(request.payload);
+    return bumpsUtils.processMacAddressAndCreateOrUpdateBumps(request.payload).then(function(results) {
+      return Promise.resolve({status: "success"});
+    });
   },
   apiLocations: function(request) {
     return bumpsUtils.processLocationsAndCreateOrUpdateBumps(request.payload);
@@ -111,6 +113,13 @@ var API = {
     return locationsUtils.getUserForTimeMachine(locations, request.payload.userId, 0, request.payload.gender, 
       request.payload.interesteInMin, request.payload.interestedInMax, request.payload.age, request.payload.tryFakeUsers, request.payload.genderInt).then(function(results) {
           return Promise.resolve(results);
+    });
+  },
+
+  api2MacObjects: function(request) {
+    console.log("macobjects api");
+    return bumpsUtils.processMacAddressAndCreateOrUpdateBumps(request.payload).then(function(results) {
+      return Promise.resolve({status: "success"});
     });
   },
 

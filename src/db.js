@@ -10,13 +10,13 @@ var SEPARATOR = "::";
 // 1 degree = 110575m
 var BBOX_EDGE = [0.001356545, 0.002713090, 0.004521817]  // 150m, 300m, 500m
 // 10 minutes overlap to consider that two locations intersect in time
-var TIME_OFFSET = 10 * 60000;
+var TIME_OFFSET = 20 * 60000;
 // Time interval we search for should not expand more than 1day before & after location time
 var TIME_BOUND = 24 * 3600000;
 
 var elasticsearch = require('elasticsearch');
 var client = new elasticsearch.Client({
-  host: 'localhost:9200',
+  host: 'api.gointersect.com:9200',
   maxSockets:2500,
   // log: 'trace'
   log : [{

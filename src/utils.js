@@ -8,7 +8,7 @@ var Utils = {
     DAY: 8640000,
     YEAR: 31536000000,
     // LOCATIONS_IP: "http://78.47.91.93:8001"
-    LOCATIONS_IP: "http://localhost:8001"
+    LOCATIONS_IP: "http://78.46.230.72:8001"
   },
   keys: function(a, b) {
     if (a < b) {

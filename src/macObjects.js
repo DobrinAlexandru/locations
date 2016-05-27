@@ -11,10 +11,10 @@ var LOCATION_DIFFERENCE = 50;
 var USERID_TO_LOCID = "useridToLocid";
 var USERID_TO_MACID = "useridToMacId";
 var macobjects = {
-  handleLocationsRequest: function(payload) {
+  handleMacObjectsRequest: function(payload) {
     console.log("0 payload - macobjects size" +  JSON.stringify(payload.macObjects.length))
     return this.processMacObject(payload.macObjects, payload.userId).bind(this)
-      .then(function(macobjects) {
+      .spread(function(mactables, savedStatus, macobjects) {
         return Promise.resolve(macobjects);
       });
   },
@@ -41,7 +41,7 @@ var macobjects = {
           console.log("\nmacobjects  before create bumps" + matchedMacObjects.length);
           console.log("\nmactabels before create bumps" + JSON.stringify(macTabelObjects.length));
           console.log("\nnew macobjects  before create bumps" + newMacObjects.length);
-          return Promise.all([this.saveOrUpdateMacTabel(macTabelObjects, macobjects), bumpsUtils.createOrUpdateBumpsBetweenMacAndMac(currentUserId, newMacObjects, false), this.saveMacObjects(macobjects, currentUserId), macobjects]).bind(this);
+          return Promise.all([this.saveOrUpdateMacTabel(macTabelObjects, macobjects), this.saveMacObjects(macobjects, currentUserId), newMacObjects]).bind(this);
        });
     });
   },

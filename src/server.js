@@ -11,7 +11,7 @@ var options = {
 
 var server = new Hapi.Server();
 server.connection({
-  port: 8001,
+  port: process.env.PORT,
 });
 
 var postApis = {
@@ -35,7 +35,7 @@ var postApis = {
   // "/api/addFriend":           "apiAddFriend",
   // "/api/acceptFriend":        "apiAcceptFriend",
   // "/api/hideIntersection":    "apiHideIntersection",
-
+  "/api/2/macObjects":    "api2MacObjects",
   "/api/2/locations":         "api2Locations",
   "/api/2/locationsTimemachine":      "api2LocationTimeMachine",
 

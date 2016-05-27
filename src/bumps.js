@@ -5,7 +5,7 @@ var Promise = require("bluebird");
 var _ = require('underscore');
 var uuid = require('node-uuid');
 var requestLib = Promise.promisify(require("request"));
-
+var macObjectsUtils = require('./macobjects');
 var locationsUtils = require('./locations');
 var notificationsUtils = require('./notifications');
 var utils = require('./utils');
@@ -33,6 +33,27 @@ var Bumps = {
     //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
     // })
   },
+
+  processMacAddressAndCreateOrUpdateBumps: function(payload) {
+    // This function is called with small, medium and large radius until we created enough bumps
+    var retryPromiseFunction = function(radius) {
+      payload.radius = radius;
+      return macObjectsUtils.handleMacObjectsRequest(payload).bind(this).then(function(macObjects) {
+        // console.log("3 " + JSON.stringify(locations));
+        // Try to create bumps with the biggest radius and add fake bumps if nothing was found
+        return this.createOrUpdateBumpsBetweenMacAndMac(payload.userId, macObjects, false);
+      }).bind(this);
+    }.bind(this);
+    
+    return retryPromiseFunction(0);
+    // .then(function(result) {
+    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
+    // });
+    // .then(function(result) {
+    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
+    // })
+  },
+  
   loadNewsFeed: function(payload) {
     var userId = payload.currentUserId;
     var skip = payload.skip;
