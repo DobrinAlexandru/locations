@@ -233,6 +233,16 @@ var Bumps = {
       userIdsWithBumps: userIdsWithBumps
     };
   },
+
+    createNewBumpsBetweenMacAndMac: function(usersIdsWithoutBumps, userId, usersById, macObjectsByUser, currentTime, reverse) {
+    var createdBumps = _.map(usersIdsWithoutBumps, function(otherUserId) {
+      var user1 = !reverse ? usersById[userId] : usersById[otherUserId];
+      var user2 = reverse ? usersById[userId] : usersById[otherUserId];
+      return this.createNewBumpBetweenMacAndMac(user1, user2, macObjectsByUser[otherUserId], currentTime, reverse);
+    }.bind(this));
+    return createdBumps;
+  },
+  
   createNewBumps: function(usersIdsWithoutBumps, userId, usersById, locationsByUser, currentTime, reverse) {
     var createdBumps = _.map(usersIdsWithoutBumps, function(otherUserId) {
       var user1 = !reverse ? usersById[userId] : usersById[otherUserId];

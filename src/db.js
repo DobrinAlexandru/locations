@@ -544,6 +544,78 @@ var db = {
       return Promise.reject(error);
     });
   },
+  
+  getMacAddressByAdress: function(excludeUserId, address, timeStart, timeEnd, size) {
+    timeEnd = timeEnd || timeStart + utils.C.HOUR/2;
+    return Promise.resolve(client.search({
+      index: "macobjects",
+      type: "macobject",
+      size: size || 100,
+      body: {
+             "query" :{
+                "filtered": {
+                   "filter": {
+                     "bool" : {
+                      "must" : [
+                           {"range": {
+                              "timeEnd": {
+                                  "gt":  timeStart - TIME_OFFSET,
+                              }
+                          }},
+                          {"range": {
+                              "timeStart": {
+                                  "gt":  timeEnd - TIME_BOUND,
+                                  "lt":  timeEnd + TIME_OFFSET
+                              }
+                          }}
+                        ],
+                        "must_not": {
+                          "term": {
+                              "userId": excludeUserId
+                          }
+                      }
+                  }
+                }
+              }
+            }
+          }
+    }));
+  },
+
+  getMacAddressFromTabelByLocation: function (location, radius, size) {
+    radius = radius || 0;
+
+    return Promise.resolve(client.search({
+      index: "mactabels",
+      type: "mactabel",
+      size: size || 100,
+      body: {
+        "query": {
+          "filtered" : {
+              "filter" : {
+                  "bool": {
+                      "must": [
+                          {"geo_bounding_box": {
+                            "type":    "indexed",
+                            "location": { 
+                                 "top_left": {
+                                    "lat": location._source.location.lat + BBOX_EDGE[radius],
+                                    "lon": location._source.location.lon - BBOX_EDGE[radius]
+                                  },
+                                  "bottom_right": {
+                                    "lat":  location._source.location.lat - BBOX_EDGE[radius],
+                                    "lon": location._source.location.lon + BBOX_EDGE[radius]
+                                  }
+                            }
+                          }}
+                      ]
+                  }
+              }
+          }
+        }
+      }
+    }));
+  },
 
   loadMessages: function(userId, otherUserId, newerThan, skip, size) {
     var must1 = [
