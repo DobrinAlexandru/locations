@@ -11,7 +11,7 @@ var options = {
 
 var server = new Hapi.Server();
 server.connection({
-  port: 8001,
+ port: process.env.PORT,
 });
 
 var postApis = {
