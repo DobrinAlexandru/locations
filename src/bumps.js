@@ -37,7 +37,6 @@ var Bumps = {
   processMacAddressAndCreateOrUpdateBumps: function(payload) {
     // This function is called with small, medium and large radius until we created enough bumps
     var retryPromiseFunction = function(radius) {
-      console.log("payload" + JSON.stringify(payload.macObjects))
       return macObjectsUtils.handleMacObjectsRequest(payload).bind(this).then(function(macObjects) {
         // console.log("3 " + JSON.stringify(locations));
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found
@@ -369,7 +368,6 @@ var Bumps = {
   },
 
   fetchUsersAndCreateBumps : function(userId, usersIds, usersById, otherUsersIds, locationsByUser, isBetweenLocationAndLocation, locations, tryAddFakeBumps){
-       console.log("\nb3");   
        return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
         users = users.docs;
         console.log("5 " + users.length);
@@ -473,7 +471,7 @@ var Bumps = {
     var update = {
       updatedAt:    currentTime,
       nrBumps:      (bump._source.nrBumps || 0) + 1,
-  //    locationTime: latestLocation._source.timeStart,
+      locationTime: macsByUser._source.time,
    //   location:     latestLocation._source.location,
       user1:        {
         userId: user1._id
@@ -494,7 +492,7 @@ var Bumps = {
       _.each(macobjects, function(macobject) {
           if(!macsByUser[macobject._source.userId] && macobject._source.userId != excludeUserId) {
               macsByUser[macobject._source.userId] = [];
-              macsByUser[macobject._source.userId] = macobject._source.address;
+              macsByUser[macobject._source.userId] = macobject;
               console.log(" 5 user id found\n" + macobject._source.userId);
           }
       });
