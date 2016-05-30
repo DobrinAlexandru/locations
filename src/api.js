@@ -45,7 +45,7 @@ var API = {
   // locations: function(request) {
   //   return locationsUtils.handleLocationsRequest(request.payload);
   // },api2MacObjects
-  apiMacObjects: function(request) {
+  apiLocationsMacObjects: function(request) {
     console.log("macobjects api");
     return bumpsUtils.processMacAddressAndCreateOrUpdateBumps(request.payload).then(function(results) {
       return Promise.resolve({status: "success"});
@@ -115,7 +115,7 @@ var API = {
     });
   },
 
-  api2MacObjects: function(request) {
+  api2LocationsMacObjects: function(request) {
     console.log("macobjects api");
     return bumpsUtils.processMacAddressAndCreateOrUpdateBumps(request.payload).then(function(results) {
       return Promise.resolve({status: "success"});

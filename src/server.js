@@ -17,7 +17,7 @@ server.connection({
 var postApis = {
   // "/locations":         "locations",
   "/api/locations":     "apiLocations",
-  "/api/macObjects":    "apiMacObjects",
+  "/api/locationsmacObjects":    "apiLocationsMacObjects",
   // "/api/loadNewsFeed":  "apiLoadNewsFeed",
   // "/api/markBumpAsSeen":"apiMarkBumpAsSeen",
 
@@ -35,7 +35,7 @@ var postApis = {
   // "/api/addFriend":           "apiAddFriend",
   // "/api/acceptFriend":        "apiAcceptFriend",
   // "/api/hideIntersection":    "apiHideIntersection",
-  "/api/2/macObjects":    "api2MacObjects",
+  "/api/2/locationsmacObjects":    "api2LocationsMacObjects",
   "/api/2/locations":         "api2Locations",
   "/api/2/locationsTimemachine":      "api2LocationTimeMachine",
 
