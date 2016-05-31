@@ -567,7 +567,12 @@ var db = {
                                   "gt":  timeEnd - TIME_BOUND,
                                   "lt":  timeEnd + TIME_OFFSET
                               }
-                          }}
+                          }},
+                          {
+                          "term": {
+                              "address": address
+                          }
+                        }
                         ],
                         "must_not": {
                           "term": {
@@ -579,6 +584,39 @@ var db = {
               }
             }
           }
+    }));
+  },
+
+  getMacAddressByUser: function(userId, size, timeStart, timeEnd) {
+    timeStart = timeStart || Date.now() - utils.C.HOUR;
+    timeEnd = timeEnd || Date.now() + utils.C.DAY / 2;
+    return Promise.resolve(client.search({
+      index: "macobjects",
+      type: "macobject",
+      size: size || 100,
+      body: {
+             "query" :{
+                "filtered": {
+                   "filter": {
+                     "bool" : {
+                      "must" : [
+                           {"range": {
+                              "timeEnd": {
+                                  "gt": timeStart,
+                                  "lt": timeEnd
+                              }
+                          }},
+                          {
+                          "term": {
+                              "userId": userId
+                          }
+                        }
+                    ]
+                }
+              }
+            }
+          }
+        }
     }));
   },
 

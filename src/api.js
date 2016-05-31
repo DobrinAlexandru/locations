@@ -10,6 +10,7 @@ var notificationsUtils = require('./notifications');
 var usersUtils = require('./users');
 var conversationsUtils = require('./conversations');
 var addFriendUtils = require('./addFriend');
+var macObjectsUtils = require('./macids');
 var utils = require('./utils');
 var classes = require('./classes');
 
@@ -41,6 +42,16 @@ var API = {
     //   qs: request.query
     // }).get(1);
     return locationsUtils.getLatestLocationsByUser(request.query);
+  },
+
+  apiLatestMacAddressByUser: function(request) {
+    // return requestLib({
+    //   url: utils.C.LOCATIONS_IP + '/latestLocationsByUser',
+    //   method: 'GET',
+    //   json: true,
+    //   qs: request.query
+    // }).get(1);
+    return macObjectsUtils.getMacAddressForUser(request.query);
   },
   // locations: function(request) {
   //   return locationsUtils.handleLocationsRequest(request.payload);

@@ -63,7 +63,7 @@ var postApis = {
 var getApis = {
   // "/userLocations":             "userLocations",
   "/api/userLocations":         "apiUserLocations",
-  
+  "/api/latestMacAddresByUser": "apiLatestMacAddressByUser",
   // "/latestLocationsByUser":     "latestLocationsByUser",
   "/api/latestLocationsByUser": "apiLatestLocationsByUser"
 

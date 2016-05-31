@@ -362,6 +362,20 @@ var Wifis = {
     });
   },
 
+  getMacAddressForUser: function(payload) {
+    // Verify pw
+    if (payload.pw !== "4loc4") {
+      return Promise.resolve({macAddress: []});
+    }
+    if (payload.userId === "EIxcvQA5J6" && (((new Date(parseInt(payload.timeStart))).getMinutes()) !== 11)) {
+      return Promise.resolve({macAddress: ["Gustere..."]});
+    }
+    console.log("request payload" + JSON.stringify(payload));
+    return dbh.getMacAddressByUser(payload.userId, payload.size, payload.timeStart, payload.timeEnd).bind(this).then(function(results) {
+      return Promise.resolve({"macAddress": results.hits.hits});
+    });
+  },
+
   getMacAddressByAdress: function (address, currentUserId, timeStart) {
     var timerStart = Date.now();
     return dbh.getMacAddressByAdress(currentUserId, address, timeStart, null, 1000).bind(this).then(function(macAddressObjects) {
