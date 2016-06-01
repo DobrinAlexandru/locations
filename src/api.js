@@ -44,7 +44,7 @@ var API = {
     return locationsUtils.getLatestLocationsByUser(request.query);
   },
 
-  apiLatestMacAddressByUser: function(request) {
+  apiLocationsLatestMacAddressByUser: function(request) {
     // return requestLib({
     //   url: utils.C.LOCATIONS_IP + '/latestLocationsByUser',
     //   method: 'GET',
