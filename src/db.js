@@ -534,16 +534,27 @@ var db = {
     }));
   },
 
-   fetchPointerList: function(pointerType, fromId) {
+  fetchPointerList: function(pointerType, fromId) {
     console.log("fetch pointer list");
      return this.fetchObject(fromId, "pointers", pointerType).bind(this).then(function(pointer) {
-      console.log("pointers list fetched: " + JSON.stringify(pointer));
+      console.log("\n\n\n\pointers list fetched: " + JSON.stringify(pointer));
+      if(pointer._source != null){
+        var newPointerIds = [];
+         _.each(pointer._source.id, function(id){
+            if(id != null){
+              newPointerIds.push(id);
+            }
+         });
+         pointer._source.id = newPointerIds;
+      }
+
       return pointer._source ? this.fetchMultiObjects(pointer._source.id, "macobjects", "macobject") : Promise.resolve({});
     }, function(error) {
       console.log("error" + JSON.stringify(error))
       return Promise.reject(error);
     });
   },
+  
   
   getMacAddressByAdress: function(excludeUserId, address, timeStart, timeEnd, size) {
     timeEnd = timeEnd || timeStart + utils.C.HOUR/2;
