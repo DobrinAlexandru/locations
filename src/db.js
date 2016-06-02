@@ -601,6 +601,9 @@ var db = {
   getMacAddressByUser: function(userId, size, timeStart, timeEnd) {
     timeStart = timeStart || Date.now() - utils.C.HOUR;
     timeEnd = timeEnd || Date.now() + utils.C.DAY / 2;
+     var sort = [
+        { "timeStart":   { "order": "asc" }}
+      ];
     return Promise.resolve(client.search({
       index: "macobjects",
       type: "macobject",
@@ -626,7 +629,8 @@ var db = {
                 }
               }
             }
-          }
+          },
+          "sort" : sort
         }
     }));
   },
