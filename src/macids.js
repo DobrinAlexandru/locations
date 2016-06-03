@@ -93,8 +93,10 @@ var Wifis = {
     var latestmacobjectsHash = [];
     var newmacobject = _.first(macobjects);
      var lastMacObject = _.last(macobjects);
-    _.each(latestmacobjects, function(latestmacobject){
-      console.log("\nmacobject for lastest" + JSON.stringify(latestmacobject.length));
+     console.log("\n\n latest macObjects" + JSON.stringify(latestmacobjects));
+
+    _.each(latestmacobjects, function(latestmacobject, idx){
+      console.log("\nlatest macobject by index" + JSON.stringify(latestmacobject));
       if(!latestmacobjectsHash[latestmacobject._source.address]){
         latestmacobjectsHash[latestmacobject._source.address] = [];
         latestmacobjectsHash[latestmacobject._source.address] = latestmacobject;
@@ -111,17 +113,20 @@ var Wifis = {
                 latestMacAddress[latestmacobject._source.address] = [];
             }
             latestMacAddress[latestmacobject._source.address] = latestmacobject;
+            
         }
 
         if (newmacobject._source.timeStart < latestmacobject._source.timeEnd) {
-          latestmacobject._source.timeEnd = newmacobject._source.timeStart;
-          latestmacobject._source.timeSpent = latestmacobject._source.timeEnd - latestmacobject._source.timeStart;
+         // latestmacobject._source.timeEnd = newmacobject._source.timeStart;
+          //latestmacobject._source.timeSpent = latestmacobject._source.timeEnd - latestmacobject._source.timeStart;
           latestMacAddress[latestmacobject._source.address] = latestmacobject;
+        
         }
       } 
     });
     
     var lastmacobjectsBatchuuiD = [];
+    var differetMacObjectsInLastBatch = latestmacobjects;
     _.each(macobjects, function(newmacobject) {
 
       var latestmacobject = [];
@@ -135,22 +140,33 @@ var Wifis = {
             latestmacobject._source.uuid = newmacobject._source.uuid;// batch id
             
             latestMacAddress[latestmacobject._source.address] = latestmacobject;
+            differetMacObjectsInLastBatch[latestmacobject._source.address] = [];
             compressMacobjects.push(latestmacobject);
         } else {
           console.log("compress insert");
          if(!newmacobject._id)
               newmacobject._id = uuid.v1();
 
-          if(!latestMacAddress[newmacobject._source.address] ){    latestMacAddress[newmacobject._source.address] = [];  }
+          if(!latestMacAddress[newmacobject._source.address] ){ latestMacAddress[newmacobject._source.address] = [];  }
 
           if(newmacobject._source.timeStart + 2 * utils.C.HOUR > lastMacObject._source.timeStart){
             latestMacAddress[newmacobject._source.address] = newmacobject;
           }
+          differetMacObjectsInLastBatch[newmacobject._source.address] = [];
           compressMacobjects.push(newmacobject);
         }
 
         lastmacobjectsBatchuuiD =  newmacobject._source.uuid;// we need to know witch locations were in the last batch per session to update +2h 
     });
+
+     _.each(differetMacObjectsInLastBatch, function(macobject, idx){
+          if(macobject._source.timeStart + 2 * utils.C.HOUR > newmacobject._source.timeStart && !differetMacObjectsInLastBatch[macobject._source.address]){
+             macobject._source.timeEnd = newmacobject._source.timeStart;
+              compressMacobjects.push(macobject);
+              console.log("\nupdate latest macobject");
+          }
+     });
+
 
     var lastAddressIds = [];
     var lastAddressKey = _.keys(latestMacAddress);
@@ -167,7 +183,7 @@ var Wifis = {
         // It's safe to supose that the user will stay here for the next x hours
         // until he uploads a new location. In that case we'll shrink that time interval.
         // Add 2 hours offset to the latest location.
-        if(newmacobject._source.uuid == lastmacobjectsBatchuuiD){//find the last sent batch macIds and max the interval
+        if(newmacobject._source.uuid == lastmacobjectsBatchuuiD && differetMacObjectsInLastBatch[newmacobject._source.address] ){//find the last sent batch macIds and max the interval
            newmacobject._source.timeEnd = newmacobject._source.timeEnd + 2 * utils.C.HOUR;
            newmacobject._source.timeSpent = newmacobject._source.timeSpent + 2 * utils.C.HOUR;
         }
