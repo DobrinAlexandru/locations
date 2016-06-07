@@ -493,7 +493,7 @@ var Bumps = {
           if(!macsByUser[macobject._source.userId] && macobject._source.userId != excludeUserId) {
               macsByUser[macobject._source.userId] = [];
               macsByUser[macobject._source.userId] = macobject;
-              console.log(" 5 user id found\n" + macobject._source.userId);
+              //console.log(" 5 user id found\n" + macobject._source.userId);
           }
       });
       return macsByUser;

@@ -537,7 +537,7 @@ var db = {
   fetchPointerList: function(pointerType, fromId) {
     console.log("fetch pointer list");
      return this.fetchObject(fromId, "pointers", pointerType).bind(this).then(function(pointer) {
-      console.log("\n\n\n\pointers list fetched: " + JSON.stringify(pointer));
+      //console.log("\n\n\n\pointers list fetched: " + JSON.stringify(pointer));
       if(pointer._source != null){
         var newPointerIds = [];
          _.each(pointer._source.id, function(id){

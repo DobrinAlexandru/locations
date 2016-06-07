@@ -14,34 +14,38 @@ var Wifis = {
   handleMacObjectsRequest: function(payload) {
     console.log("0 payload - macobjects size" +  JSON.stringify(payload.macObjects.length))
     return this.processMacObject(payload.macObjects, payload.userId).bind(this)
-      .spread(function(mactables, savedStatus, macobjects) {
+      .then(function( macobjects) {
         return Promise.resolve(macobjects);
       });
   },
 
   processMacObject: function(macobjects, currentUserId) {
     macobjects = this.mapLocationsToDBModel(macobjects, currentUserId);
+    var macObjectsToProcess;
     console.log("")
 
    return dbh.fetchPointerList(USERID_TO_MACID, currentUserId).bind(this).then(function(latestmacobjects) {
       console.log("\n\npointers list fetched \n\n" + JSON.stringify(latestmacobjects.length));
-      console.log("before compression" + JSON.stringify(macobjects.length));
       latestmacobjects = latestmacobjects.docs;
       latestmacobjects = this.retrieveFoundMacObjects(latestmacobjects);
-      macobjects = this.compressmacobjects(macobjects, latestmacobjects, currentUserId);
+      console.log("before compression" + JSON.stringify(macobjects.length));
+      var object = this.compressmacobjects(macobjects, latestmacobjects, currentUserId);
+      macobjects = object.compressmacobjects;
+      macObjectsToProcess = object.macObjectsToProcess;
       console.log("\n\nafter compression: " + JSON.stringify(macobjects.length));
       return Promise.resolve();
     })
     .then(function() {
         // fetch mactabels that match the address sent and macObjects that match de adddress sent
-       return Promise.all([this.getMacTabelObjectByAddress(macobjects), this.getAddressByMacObjectMatch(macobjects, currentUserId)]).bind(this)
-        .spread(function(macTabelObjects, matchedMacObjects){
+        console.log("macobjects to process"  + macObjectsToProcess.length);
+       return Promise.all([this.saveMacObjects(macobjects, currentUserId), this.getAddressByMacObjectMatch(macObjectsToProcess, currentUserId)]).bind(this)
+        .spread(function(savedStatus, matchedMacObjects){
           var newMacObjects = [];
           newMacObjects =  matchedMacObjects.concat(macobjects);
-          console.log("\nmacobjects  before create bumps" + matchedMacObjects.length);
-          console.log("\nmactabels before create bumps" + JSON.stringify(macTabelObjects.length));
-          console.log("\nnew macobjects  before create bumps" + newMacObjects.length);
-          return Promise.all([this.saveOrUpdateMacTabel(macTabelObjects, macobjects), this.saveMacObjects(macobjects, currentUserId), newMacObjects]).bind(this);
+        //  console.log("\nmacobjects  before create bumps" + matchedMacObjects.length);
+         // console.log("\nmactabels before create bumps" + JSON.stringify(macTabelObjects.length));
+          //console.log("\nnew macobjects  before create bumps" + newMacObjects.length);
+          return Promise.resolve(newMacObjects).bind(this);
        });
     });
   },
@@ -84,6 +88,7 @@ var Wifis = {
 
   compressmacobjects: function(macobjects, latestmacobjects, userId){
     var compressMacobjects = [];
+    var macObjectsToProcess = [];
     var latestMacAddress = [];
     macobjects = this.filterMacObjects(macobjects);
     if (macobjects.length === 0) {
@@ -93,10 +98,10 @@ var Wifis = {
     var latestmacobjectsHash = [];
     var newmacobject = _.first(macobjects);
      var lastMacObject = _.last(macobjects);
-     console.log("\n\n latest macObjects" + JSON.stringify(latestmacobjects));
+   //  console.log("\n\n latest macObjects" + JSON.stringify(latestmacobjects));
 
     _.each(latestmacobjects, function(latestmacobject, idx){
-      console.log("\nlatest macobject by index" + JSON.stringify(latestmacobject));
+    //  console.log("\nlatest macobject by index" + JSON.stringify(latestmacobject));
       if(!latestmacobjectsHash[latestmacobject._source.address]){
         latestmacobjectsHash[latestmacobject._source.address] = [];
         latestmacobjectsHash[latestmacobject._source.address] = latestmacobject;
@@ -142,6 +147,7 @@ var Wifis = {
             latestMacAddress[latestmacobject._source.address] = latestmacobject;
             differetMacObjectsInLastBatch[latestmacobject._source.address] = [];
             compressMacobjects.push(latestmacobject);
+            macObjectsToProcess.push(latestmacobject);
         } else {
           console.log("compress insert");
          if(!newmacobject._id)
@@ -154,6 +160,7 @@ var Wifis = {
           }
           differetMacObjectsInLastBatch[newmacobject._source.address] = [];
           compressMacobjects.push(newmacobject);
+          macObjectsToProcess.push(newmacobject);
         }
 
         lastmacobjectsBatchuuiD =  newmacobject._source.uuid;// we need to know witch locations were in the last batch per session to update +2h 
@@ -163,20 +170,20 @@ var Wifis = {
           if(macobject._source.timeStart + 2 * utils.C.HOUR > newmacobject._source.timeStart && !differetMacObjectsInLastBatch[macobject._source.address]){
              macobject._source.timeEnd = newmacobject._source.timeStart;
               compressMacobjects.push(macobject);
-              console.log("\nupdate latest macobject");
+             // console.log("\nupdate latest macobject");
           }
      });
 
 
     var lastAddressIds = [];
     var lastAddressKey = _.keys(latestMacAddress);
-    console.log("keys " + JSON.stringify(lastAddressKey));
+  //  console.log("keys " + JSON.stringify(lastAddressKey));
     _.each(lastAddressKey, function(address){
          var macobject = latestMacAddress[address];
          lastAddressIds.push(macobject._id);
     });
 
-    console.log("ids for pointers" + JSON.stringify(lastAddressIds));
+   // console.log("ids for pointers" + JSON.stringify(lastAddressIds));
     console.log("list after compress" + JSON.stringify(compressMacobjects.length));
 
     _.each(compressMacobjects, function(newmacobject){
@@ -193,13 +200,16 @@ var Wifis = {
     var pointerToLastUserMacobjects = dbh.createPointerObject(USERID_TO_MACID, userId, lastAddressIds, "macobjects", "macobject");
     var list = [];
     list.push(pointerToLastUserMacobjects);
-    console.log("pointer to save" + JSON.stringify(pointerToLastUserMacobjects));
+   // console.log("pointer to save" + JSON.stringify(pointerToLastUserMacobjects));
 
     var saveObjects = dbh.saveListToDB(list).then(function(result) {
         console.log("pointer saved succesful");
         return Promise.resolve();
     });
-    return compressMacobjects;
+    return {
+          compressmacobjects: compressMacobjects,
+          macObjectsToProcess : macObjectsToProcess
+        };
   },
 
   saveOrUpdateMacTabel: function(mactabels, macobjects){
@@ -233,7 +243,7 @@ var Wifis = {
         }
     });
 
-     console.log("\nmacobjects added to hash" + macobjectsAddedToHash);
+   //  console.log("\nmacobjects added to hash" + macobjectsAddedToHash);
   //   console.log("\n macaddreslistTo add" + JSON.stringify(macAddressListToAdd));
     _.each(macAddressListToAdd, function(address) {
       var x1 = 90; var x2 = -90; var y1 = 90; var y2 = -90;
@@ -241,7 +251,7 @@ var Wifis = {
       if(macTabelHash[indexAddress]){//TODO
         var mactabel = macTabelHash[indexAddress];
         mactabel = mactabel[0]._source;
-        console.log("\mactabels to process" + JSON.stringify(mactabel));
+      //  console.log("\mactabels to process" + JSON.stringify(mactabel));
         x1 = mactabel.x1; x2 = mactabel.x2; y1 = mactabel.y1; y2 = mactabel.y2;
       }
       var macObject = [];
@@ -273,11 +283,11 @@ var Wifis = {
           }
       }
      }.bind(this));
-    console.log("\n to save mac tabels created" + JSON.stringify(mactabelsToSave.length));
-    console.log("\n to update mac tabels" + JSON.stringify(mactabelsToUpdate.length));
+  //  console.log("\n to save mac tabels created" + JSON.stringify(mactabelsToSave.length));
+   // console.log("\n to update mac tabels" + JSON.stringify(mactabelsToUpdate.length));
     return Promise.all([this.saveMacTabels(mactabelsToSave), this.updateMacTabels(mactabelsToUpdate)]).bind(this)
     .spread(function(createdMacTabels, updatedMacTabels) {
-        console.log("mactabels to process for mac-loc" + JSON.stringify(mactabelsAfterSaveAndUpdate.length));
+     //   console.log("mactabels to process for mac-loc" + JSON.stringify(mactabelsAfterSaveAndUpdate.length));
         return Promise.resolve(mactabelsAfterSaveAndUpdate);
       });
   },
@@ -386,7 +396,7 @@ var Wifis = {
     if (payload.userId === "EIxcvQA5J6" && (((new Date(parseInt(payload.timeStart))).getMinutes()) !== 11)) {
       return Promise.resolve({macAddress: ["Gustere..."]});
     }
-    console.log("request payload" + JSON.stringify(payload));
+  //  console.log("request payload" + JSON.stringify(payload));
     return dbh.getMacAddressByUser(payload.userId, payload.size, payload.timeStart, payload.timeEnd).bind(this).then(function(results) {
       return Promise.resolve({"macAddress": results.hits.hits});
     });
@@ -394,7 +404,7 @@ var Wifis = {
 
   getMacAddressByAdress: function (address, currentUserId, timeStart) {
     var timerStart = Date.now();
-    return dbh.getMacAddressByAdress(currentUserId, address, timeStart, null, 1000).bind(this).then(function(macAddressObjects) {
+    return dbh.getMacAddressByAdress(currentUserId, address, timeStart, null, 100).bind(this).then(function(macAddressObjects) {
       if(macAddressObjects.hits.hits.length > 0 ){
         macAddressObjects = this.mapMacObject(macAddressObjects.hits.hits);
       // console.log("3 mac addres processd found with match for " + address + " " + macAddressObjects.length);
