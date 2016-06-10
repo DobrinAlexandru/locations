@@ -25,13 +25,11 @@ var Bumps = {
       });
     }.bind(this);
     
-    return retryPromiseFunction(0);
-    // .then(function(result) {
-    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
-    // });
-    // .then(function(result) {
-    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
-    // })
+    return retryPromiseFunction(0).then(function(result) {
+       return  result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
+     }).then(function(result) {
+       return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
+     });
   },
 
   processMacAddressAndCreateOrUpdateBumps: function(payload) {
@@ -467,11 +465,14 @@ var Bumps = {
   //    return !reverse ? pair.location._source.timeStart : pair.nearbyLocation._source.timeStart;
   //  });
   //  latestLocation = !reverse ? latestLocation.location : latestLocation.nearbyLocation;
-
+    var bumpTime = currentTime;
+    if(macsByUser._source != null){
+       bumpTime = macsByUser._source.timeStart;
+    }
     var update = {
       updatedAt:    currentTime,
       nrBumps:      (bump._source.nrBumps || 0) + 1,
-      locationTime: macsByUser._source.time,
+      locationTime: bumpTime,
    //   location:     latestLocation._source.location,
       user1:        {
         userId: user1._id

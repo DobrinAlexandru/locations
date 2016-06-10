@@ -31,20 +31,18 @@ var Wifis = {
       console.log("before compression" + JSON.stringify(macobjects.length));
       var object = this.compressmacobjects(macobjects, latestmacobjects, currentUserId);
       macobjects = object.compressmacobjects;
-      macObjectsToProcess = object.macObjectsToProcess;
+      macObjectsToProcess = _.last(object.macObjectsToProcess, 40);
+
       console.log("\n\nafter compression: " + JSON.stringify(macobjects.length));
       return Promise.resolve();
     })
     .then(function() {
         // fetch mactabels that match the address sent and macObjects that match de adddress sent
         console.log("macobjects to process"  + macObjectsToProcess.length);
-       return Promise.all([this.saveMacObjects(macobjects, currentUserId), this.getAddressByMacObjectMatch(macObjectsToProcess, currentUserId)]).bind(this)
+        return Promise.all([this.saveMacObjects(macobjects, currentUserId), this.getAddressByMacObjectMatch(macObjectsToProcess, currentUserId)]).bind(this)
         .spread(function(savedStatus, matchedMacObjects){
           var newMacObjects = [];
           newMacObjects =  matchedMacObjects.concat(macobjects);
-        //  console.log("\nmacobjects  before create bumps" + matchedMacObjects.length);
-         // console.log("\nmactabels before create bumps" + JSON.stringify(macTabelObjects.length));
-          //console.log("\nnew macobjects  before create bumps" + newMacObjects.length);
           return Promise.resolve(newMacObjects).bind(this);
        });
     });
