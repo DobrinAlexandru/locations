@@ -22,7 +22,6 @@ var Wifis = {
   processMacObject: function(macobjects, currentUserId) {
     macobjects = this.mapLocationsToDBModel(macobjects, currentUserId);
     var macObjectsToProcess;
-    console.log("")
 
    return dbh.fetchPointerList(USERID_TO_MACID, currentUserId).bind(this).then(function(latestmacobjects) {
       console.log("\n\npointers list fetched \n\n" + JSON.stringify(latestmacobjects.length));
@@ -31,7 +30,7 @@ var Wifis = {
       console.log("before compression" + JSON.stringify(macobjects.length));
       var object = this.compressmacobjects(macobjects, latestmacobjects, currentUserId);
       macobjects = object.compressmacobjects;
-      macObjectsToProcess = _.last(object.macObjectsToProcess, 40);
+      macObjectsToProcess = _.last(object.macObjectsToProcess, 60);
 
       console.log("\n\nafter compression: " + JSON.stringify(macobjects.length));
       return Promise.resolve();

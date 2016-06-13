@@ -26,9 +26,9 @@ var Bumps = {
     }.bind(this);
     
     return retryPromiseFunction(0).then(function(result) {
-       return  result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
+       return  result.bumpsToAdd <= - 30 ? Promise.resolve(result) : retryPromiseFunction(1);
      }).then(function(result) {
-       return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
+       return result.bumpsToAdd <= - 50 ? Promise.resolve(result) : retryPromiseFunction(2);
      });
   },
 
@@ -38,17 +38,15 @@ var Bumps = {
       return macObjectsUtils.handleMacObjectsRequest(payload).bind(this).then(function(macObjects) {
         // console.log("3 " + JSON.stringify(locations));
         // Try to create bumps with the biggest radius and add fake bumps if nothing was found
-        return this.createOrUpdateBumpsBetweenMacAndMac(payload.userId, macObjects, false);
+        return this.createOrUpdateBumpsBetweenMacAndMac(payload.userId, macObjects, (radius === 0));
       }).bind(this);
     }.bind(this);
     
-    return retryPromiseFunction(0);
-    // .then(function(result) {
-    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
-    // });
-    // .then(function(result) {
-    //   return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(2);
-    // })
+     return retryPromiseFunction(0).then(function(result) {
+       return  result.bumpsToAdd <= -30 ? Promise.resolve(result) : retryPromiseFunction(1);
+     }).then(function(result) {
+       return result.bumpsToAdd <= -50 ? Promise.resolve(result) : retryPromiseFunction(2);
+     });
   },
   
   loadNewsFeed: function(payload) {
