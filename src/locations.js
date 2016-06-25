@@ -126,10 +126,7 @@ var Locations = {
       // Attach to list of objects and save in bulk
       locations.push(pointerToLastUserLocation);
     }
-    return dbh.saveListToDB(locations).then(function(result) {
-        console.log("TIME save: " + (Date.now() - timerStart));
-        return Promise.resolve();
-      });
+    return Promise.all([dbh.saveListToDB(locations), dbh.saveListToRedis(locations)]);
   },
 
   /* If promise is fulfilled, add {processed: true} to location
@@ -142,6 +139,33 @@ var Locations = {
     ...
   ]
   */
+  getLocationsNearSingleLocation: function(location, currentUserId, radius) {
+    var timerStart = Date.now();
+   
+    if(timerStart - location._source.timeStart < utils.C.DAY ) {
+	    return dbh.getLocationsNearSingleLocationFromRedis(location, currentUserId, radius).then(function(nearbyLocations) {
+	      //console.log("redis location found" + JSON.stringify(nearbyLocations.body));
+	      console.log("TIME multiple: " + (Date.now() - timerStart));
+	      console.log("nearby: " + nearbyLocations.body.hits.hits.length);
+	      var object = {
+	        location: location,
+	        nearbyLocations: nearbyLocations.body.hits.hits
+	      };
+	      return Promise.resolve(object);
+	    });
+	} else {
+		return dbh.getLocationsNearSingleLocation(location, currentUserId, radius).then(function(nearbyLocations) {
+	      console.log("TIME multiple: " + (Date.now() - timerStart));
+	      console.log("nearby: " + nearbyLocations.hits.hits.length);
+	      var object = {
+	        location: location,
+	        nearbyLocations: nearbyLocations.hits.hits
+	      };
+	      return Promise.resolve(object);
+	     });
+	}
+  },
+
   getLocationsNearLocations: function(locations, currentUserId, radius) {
     // console.log(JSON.stringify(locations));
     if (locations.length === 0) {
@@ -175,18 +199,6 @@ var Locations = {
       nearbyLocations: []
     }
   */
-  getLocationsNearSingleLocation: function(location, currentUserId, radius) {
-    var timerStart = Date.now();
-    return dbh.getLocationsNearSingleLocation(location, currentUserId, radius).then(function(nearbyLocations) {
-      console.log("TIME multiple: " + (Date.now() - timerStart));
-      console.log("nearby: " + nearbyLocations.hits.hits.length);
-      var object = {
-        location: location,
-        nearbyLocations: nearbyLocations.hits.hits
-      };
-      return Promise.resolve(object);
-    });
-  },
 
   mapLocationsToDBModel: function(locations, userId) {
     return _.map(locations, function(location) {

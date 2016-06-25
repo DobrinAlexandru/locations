@@ -25,11 +25,7 @@ var Bumps = {
       });
     }.bind(this);
     
-    return retryPromiseFunction(0).then(function(result) {
-       return  result.bumpsToAdd <= - 30 ? Promise.resolve(result) : retryPromiseFunction(1);
-     }).then(function(result) {
-       return result.bumpsToAdd <= - 50 ? Promise.resolve(result) : retryPromiseFunction(2);
-     });
+    return retryPromiseFunction(0);
   },
 
   processMacAddressAndCreateOrUpdateBumps: function(payload) {
@@ -42,11 +38,7 @@ var Bumps = {
       }).bind(this);
     }.bind(this);
     
-     return retryPromiseFunction(0).then(function(result) {
-       return  result.bumpsToAdd <= -30 ? Promise.resolve(result) : retryPromiseFunction(1);
-     }).then(function(result) {
-       return result.bumpsToAdd <= -50 ? Promise.resolve(result) : retryPromiseFunction(2);
-     });
+     return retryPromiseFunction(0);
   },
   
   loadNewsFeed: function(payload) {

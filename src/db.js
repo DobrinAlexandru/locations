@@ -1,7 +1,7 @@
 var _ = require('underscore');
 var Promise = require("bluebird");
 var uuid = require('node-uuid');
-
+var requestLib = Promise.promisify(require("request"));
 var utils = require('./utils');
 
 var SEPARATOR = "::";
@@ -27,6 +27,31 @@ var client = new elasticsearch.Client({
 console.log("xxxxx bog xxxxx");
  
 var db = {
+  saveListToRedis: function(objects){
+      //post objects to redis
+      console.log("save to redis");
+      var locationsToSave = [];
+      var currentTime = Date.now();
+      _.each(objects, function(location){
+          if(currentTime - location._source.timeStart < utils.C.DAY ){
+             locationsToSave.push(location);
+          }
+      });
+
+      if(locationsToSave != null && locationsToSave.length > 0){
+        console.log("enter save redis");
+        return requestLib({
+          url: 'http://es02.gointersect.com:8001/api/saveLocations',
+          method: 'POST',
+          json: true,
+          body: {locations: objects}
+        });
+      } else {
+          console.log("dont save to redis");
+          return locationsToSave;
+      }
+  },
+
   saveListToDB: function(objects) {
     var bulkOperations = [];
     _.each(objects, function(object) {
@@ -178,6 +203,16 @@ var db = {
         }
       }
     }));
+  },
+  getLocationsNearSingleLocationFromRedis: function(location, excludeUserId, radius, size) {
+    console.log("enter redis get near location");
+    return requestLib({
+        url: 'http://es02.gointersect.com:8001/api/processLocations',
+        method: 'POST',
+        json: true,
+        body: {locations: location
+              }
+      });
   },
   getLocationsNearSingleLocation: function(location, excludeUserId, radius, size) {
     radius = radius || 0;
