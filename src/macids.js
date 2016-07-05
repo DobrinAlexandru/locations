@@ -319,11 +319,7 @@ var Wifis = {
     } 
     console.log("mac objects length: " + macobjects.length);
     //TODO create pointer list
-    return dbh.saveListToDB(macobjects).then(function(result) {
-
-        console.log("TIME save macobjects: " + (Date.now() - timerStart));
-        return Promise.resolve();
-      });
+    return Promise.all([dbh.saveListToDB(macobjects), dbh.saveListToRedis(macobjects)]);
   },
 
 
@@ -359,7 +355,7 @@ var Wifis = {
     }
     console.log("2.2 getMacAddress by macObject \n\n\n\n" + JSON.stringify(macobjects.length));
     var tasks = _.map(macobjects, function(macobject) {
-      return this.getMacAddressByAdress(macobject._source["address"], currentUserId, macobject._source.timeStart);
+      return this.getMacAddressByAdress(macobject);
     }.bind(this));
 
     return Promise.settle(tasks).bind(this).then(function(results) {
@@ -399,17 +395,39 @@ var Wifis = {
     });
   },
 
-  getMacAddressByAdress: function (address, currentUserId, timeStart) {
+  getMacAddressByAdress: function (macobject) {
     var timerStart = Date.now();
-    return dbh.getMacAddressByAdress(currentUserId, address, timeStart, null, 100).bind(this).then(function(macAddressObjects) {
-      if(macAddressObjects.hits.hits.length > 0 ){
-        macAddressObjects = this.mapMacObject(macAddressObjects.hits.hits);
-      // console.log("3 mac addres processd found with match for " + address + " " + macAddressObjects.length);
-      } else {
-        macAddressObjects = [];
-      }
-      return Promise.resolve(macAddressObjects);
-    });
+    console.log("timerStart" + timerStart);
+    console.log("timeStart " + macobject._source.timeStart);
+    if(timerStart - macobject._source.timeStart < utils.C.DAY){
+      console.log("redis search");
+      return dbh.getMacAddressByAdressFromRedis(macobject._source.userId, macobject, 100).bind(this).then(function(macAddressObjects) {
+        macAddressObjects = macAddressObjects.body;
+        console.lo
+        if(macAddressObjects.hits.hits.length > 0 ){
+          console.log("aa");
+          macAddressObjects = this.mapMacObjectFromRedis(macAddressObjects.hits.hits);
+         console.log("3 mac addres processd found with match for " + " " + JSON.stringify(macAddressObjects));
+          console.log("bb");
+        } else {
+          console.log("cc");
+          macAddressObjects = [];
+        }
+        console.log("nearby found macobjects" + JSON.stringify(macAddressObjects));
+        return Promise.resolve(macAddressObjects);
+      });
+    } else {
+      console.log("es search");
+      return dbh.getMacAddressByAdress(macobject._source.userId, macobject._source.address, macobject._source.timeStart, macobject._source.timeEnd, 100).bind(this).then(function(macAddressObjects) {
+        if(macAddressObjects.hits.hits.length > 0 ){
+          macAddressObjects = this.mapMacObject(macAddressObjects.hits.hits);
+        // console.log("3 mac addres processd found with match for " + address + " " + macAddressObjects.length);
+        } else {
+          macAddressObjects = [];
+        }
+        return Promise.resolve(macAddressObjects);
+      });
+    }
   },
 
   mapLocationsToDBModel: function(macobjects, userId) {
@@ -455,6 +473,33 @@ var Wifis = {
             lon: macObject.location["lon"],
           },
           uuid : macObject["uuid"],
+          timeStart: macObject["timeStart"],
+          timeEnd: macObject["timeEnd"],
+          timeSpent : macObject["timeSpent"]
+        }
+      };
+    });
+  },
+
+
+   mapMacObjectFromRedis: function(macobjects) {//_sorce objects
+    return _.map(macobjects, function(macobject) {
+      var macObject = macobject._source;
+      return {
+        _index: "macobjects",
+        _type: "macobject",
+        // _id: uuid.v1(),
+        _source: {
+          address:  macObject["address"],
+          time:     macObject["time"],
+        //  name:     macObject["name"],
+          userId:   macObject["userId"],
+        //  level:  macObject["level"],
+        //  location: {
+         //   lat: macObject.location["lat"],
+           // lon: macObject.location["lon"],
+          //},
+         // uuid : macObject["uuid"],
           timeStart: macObject["timeStart"],
           timeEnd: macObject["timeEnd"],
           timeSpent : macObject["timeSpent"]

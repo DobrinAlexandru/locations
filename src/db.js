@@ -29,26 +29,45 @@ console.log("xxxxx bog xxxxx");
 var db = {
   saveListToRedis: function(objects){
       //post objects to redis
-      console.log("save to redis");
-      var locationsToSave = [];
+      console.log("save to redis" + JSON.stringify(objects));
+      var objectsToSave = [];
       var currentTime = Date.now();
-      _.each(objects, function(location){
-          if(currentTime - location._source.timeStart < utils.C.DAY ){
-             locationsToSave.push(location);
+      var type = "";
+      _.each(objects, function(object){
+          if(currentTime - object._source.timeStart < utils.C.DAY ){
+            
+            if(object._type=="macobject"){
+              console.log("type" + JSON.stringify(object._type));
+              type = "macobject";
+            } else {
+              type = "locations";
+            } 
+            objectsToSave.push(object);  
+          } else {
+            console.log("old");
           }
       });
 
-      if(locationsToSave != null && locationsToSave.length > 0){
+
+      if(type == "macobject"){
+        type = "saveMacObjects";
+      } else {
+        type = "saveLocations";
+      }
+
+      if(objectsToSave != null && objectsToSave.length > 0){
         console.log("enter save redis");
+        var postUrl = "http://es02.gointersect.com:8001/api/" + type;
+        console.log("postUrl" + postUrl);
         return requestLib({
-          url: 'http://es02.gointersect.com:8001/api/saveLocations',
+          url: postUrl,
           method: 'POST',
           json: true,
-          body: {locations: objects}
+          body: {objects: objectsToSave, password:"4loc4"}
         });
       } else {
           console.log("dont save to redis");
-          return locationsToSave;
+          return objectsToSave;
       }
   },
 
@@ -210,7 +229,7 @@ var db = {
         url: 'http://es02.gointersect.com:8001/api/processLocations',
         method: 'POST',
         json: true,
-        body: {locations: location
+        body: {locations: location,  password:"4loc4"
               }
       });
   },
@@ -631,6 +650,21 @@ var db = {
             }
           }
     }));
+  },
+
+
+  getMacAddressByAdressFromRedis: function(excludeUserId, macobject, count) {
+    console.log("enter redis get near macobject");
+    return requestLib({
+        url: 'http://es02.gointersect.com:8001/api/processMacObjects',
+        method: 'POST',
+        json: true,
+        body: { macObjects: macobject,
+                curretUserId : excludeUserId,
+                size : count,
+                 password:"4loc4"
+              }
+      });
   },
 
   getMacAddressByUser: function(userId, size, timeStart, timeEnd) {
