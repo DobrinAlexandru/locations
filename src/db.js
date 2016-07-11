@@ -27,9 +27,50 @@ var client = new elasticsearch.Client({
 console.log("xxxxx bog xxxxx");
  
 var db = {
+  saveLastMacObjectsToRedis : function(object){
+   var postUrl = "http://es02.gointersect.com:8001/api/saveLastMacObjects";
+      console.log("postUrl" + postUrl);
+      return requestLib({
+        url: postUrl,
+        method: 'POST',
+        json: true,
+        body: {objects: objectsToSave, password:"4loc4"}
+      });
+  },
+  saveLastLocationToRedis : function(object){
+   var postUrl = "http://es02.gointersect.com:8001/api/saveLastLocation";
+      console.log("postUrl" + postUrl);
+      return requestLib({
+        url: postUrl,
+        method: 'POST',
+        json: true,
+        body: {objects: objectsToSave, password:"4loc4"}
+      });
+  },
+  getLastLocationToRedis : function(object){
+   var postUrl = "http://es02.gointersect.com:8001/api/getLatestLocation";
+      console.log("postUrl" + postUrl);
+      return requestLib({
+        url: postUrl,
+        method: 'POST',
+        json: true,
+        body: {currentUserId: object, password:"4loc4"}
+      });
+  },
+   getLastMacAddressesFromRedis : function(object){
+   var postUrl = "http://es02.gointersect.com:8001/api/getLastMacObjects";
+      console.log("postUrl" + postUrl);
+      return requestLib({
+        url: postUrl,
+        method: 'POST',
+        json: true,
+        body: {currentUserId: object, password:"4loc4"}
+      });
+  },
+
   saveListToRedis: function(objects){
       //post objects to redis
-      console.log("save to redis" + JSON.stringify(objects));
+     // console.log("save to redis" + JSON.stringify(objects));
       var objectsToSave = [];
       var currentTime = Date.now();
       var type = "";
@@ -44,7 +85,7 @@ var db = {
             } 
             objectsToSave.push(object);  
           } else {
-            console.log("old");
+            //console.log("old" + (currentTime - object._source.timeStart));
           }
       });
 
@@ -64,6 +105,33 @@ var db = {
           method: 'POST',
           json: true,
           body: {objects: objectsToSave, password:"4loc4"}
+        });
+      } else {
+          console.log("dont save to redis");
+          return objectsToSave;
+      }
+  },
+
+  saveMacObjectsToRedis: function(objects, lastMacIds){
+      //post objects to redis
+     // console.log("save to redis" + JSON.stringify(objects));
+      var objectsToSave = [];
+      var currentTime = Date.now();
+      _.each(objects, function(object){
+          if(currentTime - object._source.timeStart < utils.C.DAY ){
+            objectsToSave.push(object);  
+          } 
+      });
+
+      if(objectsToSave != null && objectsToSave.length > 0){
+        console.log("enter save redis");
+        var postUrl = "http://es02.gointersect.com:8001/api/saveMacObjects";
+        console.log("postUrl" + postUrl);
+        return requestLib({
+          url: postUrl,
+          method: 'POST',
+          json: true,
+          body: {objects: objectsToSave, password:"4loc4", lastMacAddressIds :lastMacIds}
         });
       } else {
           console.log("dont save to redis");
@@ -229,7 +297,8 @@ var db = {
         url: 'http://es02.gointersect.com:8001/api/processLocations',
         method: 'POST',
         json: true,
-        body: {locations: location,  password:"4loc4"
+        body: {locations: location,  password:"4loc4",
+        curretUserId : excludeUserId,
               }
       });
   },

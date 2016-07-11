@@ -12,8 +12,12 @@ var USERID_TO_LOCID = "useridToLocid";
 
 var Locations = {
   handleLocationsRequest: function(payload) {
+    var timerStart = Date.now();
     return this.processLocations(payload.locations, payload.userId, payload.radius).bind(this)
       .then(function(locations) {
+      //var lastlocation  = _.last(locations);
+      //console.log("lasssst locations" + JSON.stringify(lastlocation));
+     console.log("time till save locations" + (Date.now() - timerStart));
         return Promise.resolve({
           locations: locations
         });
@@ -75,32 +79,44 @@ var Locations = {
   ]
   */
   processLocations: function(locations, currentUserId, radius) {
+    var timerStart = Date.now();
+    //console.log("before filter" + locations.length);
     locations = this.filterAndFixBadLocations(locations);
+    //console.log("time0.1 :" +(Date.now() - timerStart));
+    //console.log("after filter" + locations.length);
     locations = _.sortBy(locations, "time");
+    //console.log("time0.2 :" +(Date.now() - timerStart));
     locations = this.mapLocationsToDBModel(locations, currentUserId);
-    
+    locations = _.last(locations, 100);
     // if (Math.random() > 1) {
     //   return Promise.reject();
     //   return this.saveLocations(locations, currentUserId);
     // }
-    var timerStart = Date.now();
-    return dbh.fetchPointer(USERID_TO_LOCID, currentUserId).bind(this).then(function(latestLocation) {
+  
+    //console.log("time0.3 :" +(Date.now() - timerStart));
+    return dbh.getLastLocationToRedis(currentUserId).bind(this).then(function(latestLocation) {
         // console.log("TIME fetch latest: " + (Date.now() - timerStart));
-        // console.log("before compression: " + locations.length);
-        locations = this.compressLocations(locations, latestLocation);
+        latestLocation = latestLocation.body;
+        //console.log("before compression: " + locations.length);
+        console.log("time1 :" +(Date.now() - timerStart));
+        //console.log("latestlocations" + JSON.stringify(latestLocation));
+        locatios = this.compressLocations(locations, latestLocation);
         // TODO remove this when server is more stable
         // locations = _.last(locations, 1);
-        // console.log("after compression: " + locations.length);
+         //console.log("after compression: " + locations.length);
+        //console.log("time2 :" +(Date.now() - timerStart));
         return Promise.resolve([]);
       })
       .then(function() {
-        timerStart = Date.now();
-        return this.getLocationsNearLocations(_.last(locations, 10), currentUserId, radius);
+       // console.log("time3 :" +(Date.now() - timerStart));
+        //console.log("locations to fetch" + JSON.stringify(locations))
+        return this.getLocationsNearLocations(_.last(locations, 30), currentUserId, radius);
         // return Promise.resolve([]);
       })
       .then(function(locationsNearLocations) {
         // console.log("TIME locations nearby: " + (Date.now() - timerStart));
-        console.log("near loc: " + locationsNearLocations.length);
+        //console.log("near loc: " + JSON.stringify(locationsNearLocations));
+        console.log("time4 :" +(Date.now() - timerStart));
         // Save locations after getLocationsNearLocations, because we need the 'processed' flag set
         return Promise.all([Promise.resolve(locationsNearLocations), this.saveLocations(locations, currentUserId)]);
       })
@@ -126,7 +142,10 @@ var Locations = {
       // Attach to list of objects and save in bulk
       locations.push(pointerToLastUserLocation);
     }
-    return Promise.all([dbh.saveListToDB(locations), dbh.saveListToRedis(locations)]);
+    return Promise.all([dbh.saveListToDB(locations), dbh.saveListToRedis(locations)]).then(function(){
+        console.log("time to save" + (Date.now() - timerStart));
+        return Promise.resolve({});
+    });
   },
 
   /* If promise is fulfilled, add {processed: true} to location
@@ -141,10 +160,11 @@ var Locations = {
   */
   getLocationsNearSingleLocation: function(location, currentUserId, radius) {
     var timerStart = Date.now();
-   
+   console.log("get near location");
     if(timerStart - location._source.timeStart < utils.C.DAY ) {
+      console.log("redis search" + location._source.timeStart);
 	    return dbh.getLocationsNearSingleLocationFromRedis(location, currentUserId, radius).then(function(nearbyLocations) {
-	      //console.log("redis location found" + JSON.stringify(nearbyLocations.body));
+	     // console.log("redis location found" + JSON.stringify(nearbyLocations.body));
 	      console.log("TIME multiple: " + (Date.now() - timerStart));
 	      console.log("nearby: " + nearbyLocations.body.hits.hits.length);
 	      var object = {
@@ -154,6 +174,7 @@ var Locations = {
 	      return Promise.resolve(object);
 	    });
 	} else {
+    console.log("esss");
 		return dbh.getLocationsNearSingleLocation(location, currentUserId, radius).then(function(nearbyLocations) {
 	      console.log("TIME multiple: " + (Date.now() - timerStart));
 	      console.log("nearby: " + nearbyLocations.hits.hits.length);
@@ -172,10 +193,11 @@ var Locations = {
       return Promise.resolve([]);
     }
 
+
     var tasks = _.map(locations, function(location) {
       return this.getLocationsNearSingleLocation(location, currentUserId, radius).reflect();
     }.bind(this));
-
+    console.log("aaa");
     return Promise.all(tasks).bind(this).then(function(results) {
       var locationsNearLocations = [];
       _.each(results, function(result) {
@@ -345,7 +367,7 @@ var Locations = {
     console.log("last: " + latestLocation._id);
     var compressedLocations = [];
 
-    if (locations.length === 0) {
+    if (locations.length === 0 || latestLocation == "undefined") {
       return compressedLocations;
     }
     // if time machine

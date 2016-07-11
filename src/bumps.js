@@ -99,23 +99,27 @@ var Bumps = {
     var usersIds = otherUsersIds.concat(userId);
     var usersById = {};
     // Fetch users
+    var timeStart = Date.now();
     return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
         users = users.docs;
         console.log("5 " + users.length);
         // Group users by id
+        console.log("fetch users time " + (Date.now() - timeStart));
         usersById = _.object(_.map(users, function(user) {
           return [user._id, user];
         }));
-        // console.log("5.1 " + JSON.stringify(usersById));
+       //  console.log("5.1 " + JSON.stringify(usersById));
         // TODO handle empty lists
         return Promise.all([
           this.createOneWayBumps(userId, otherUsersIds, usersById, locationsByUser, false),
           this.createOneWayBumps(userId, otherUsersIds, usersById, locationsByUser, true),
         ]);
       }).then(function(bumps) {
+        console.log("time before save bumps" + (Date.now() - timeStart));
         // Save all bumps, Send notification, Increment nrBumps on user
         return this.saveBumpsAndSendNotifications(bumps, userId, usersById);
       }).then(function() {
+        console.log("time before save bumps2 " + (Date.now() - timeStart));
         // Add fake users if nr of bumps is low
         return this.addFakeBumpsIfNeeded(userId, usersById, _.last(locations), tryAddFakeBumps);
       });
@@ -199,11 +203,13 @@ var Bumps = {
   // Create bumps between userId and otherUsersIds, using the "reverse" variable as a way a -> b or a <- b
   createOneWayBumps: function(userId, otherUsersIds, usersById, locationsByUser, reverse) {
     // console.log("6 " + JSON.stringify(otherUsersIds));
+    var timerStart = Date.now();
     return dbh.loadBumps({userId: userId, otherUsersIds: otherUsersIds, hidden: true}, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
       var existingsBumps = bumps.hits.hits;
       console.log("6.2 existings bumps " + existingsBumps.length);
       // Optimisation since Date.now() is expensive
       var currentTime = Date.now();
+      console.log("laod bumps" + (currentTime - timerStart));
       // Update existings bumps
       var data = this.updateExistingsBumps(existingsBumps, userId, usersById, locationsByUser, currentTime, reverse);
       var updatedBumps = data.updatedBumps;
@@ -351,19 +357,21 @@ var Bumps = {
     var usersIds = otherUsersIds.concat(userId);
     var usersById = {};
     // Fetch users
-    console.log("createorUpdate bumps mac-mac" + JSON.stringify(otherUsersIds));
+    //console.log("createorUpdate bumps mac-mac" + JSON.stringify(otherUsersIds));
     return this.fetchUsersAndCreateBumps(userId, usersIds, usersById, otherUsersIds, macObjectsByUser, false, null, tryAddFakeBumps);
   },
 
   fetchUsersAndCreateBumps : function(userId, usersIds, usersById, otherUsersIds, locationsByUser, isBetweenLocationAndLocation, locations, tryAddFakeBumps){
+        var timerStart = Date.now();
        return dbh.fetchMultiObjects(usersIds, "users", "user").bind(this).then(function(users) {
         users = users.docs;
         console.log("5 " + users.length);
+        console.log("fetch time users"  + (Date.now() - timerStart));
         // Group users by id
         usersById = _.object(_.map(users, function(user) {
           return [user._id, user];
         }));
-        // console.log("5.1 " + JSON.stringify(usersById));
+        //console.log("5.1 " + JSON.stringify(usersById));
         // TODO handle empty lists
         if(isBetweenLocationAndLocation){
             return Promise.all([
@@ -392,7 +400,7 @@ var Bumps = {
   },
 
   createOneWayBumpsBetweenMacAndMac: function(userId, otherUsersIds, usersById, macObjectsByUser, reverse) {
-    console.log("6 mac - mac " + JSON.stringify(otherUsersIds));
+    //console.log("6 mac - mac " + JSON.stringify(otherUsersIds));
     return dbh.loadBumps({userId: userId, otherUsersIds: otherUsersIds, hidden: true}, reverse, 0, otherUsersIds.length).bind(this).then(function(bumps) {
       var existingsBumps = bumps.hits.hits;
       console.log("6.2 existings bumps mac mac" + existingsBumps.length);
@@ -404,7 +412,7 @@ var Bumps = {
 
       // Get users ids for witch we create a new bump
       var usersIdsWithoutBumps = _.difference(otherUsersIds, data.userIdsWithBumps);
-      console.log("9.0 ids without bumps mac mac " + JSON.stringify(usersIdsWithoutBumps));
+     // console.log("9.0 ids without bumps mac mac " + JSON.stringify(usersIdsWithoutBumps));
       // Create new bumps
       var createdBumps = this.createNewBumpsBetweenMacAndMac(usersIdsWithoutBumps, userId, usersById, macObjectsByUser, currentTime, reverse);
       console.log("9 created mac mac" + createdBumps.length);
