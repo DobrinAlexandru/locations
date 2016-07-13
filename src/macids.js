@@ -37,7 +37,7 @@ var Wifis = {
       macobjects = object.compressmacobjects;
       lastMacIds = object.lastMacIds;
     //  console.log("last macAddres ids" + JSON.stringify(lastMacIds));
-      macObjectsToProcess = _.last(object.macObjectsToProcess, 50);
+      macObjectsToProcess = _.last(object.macObjectsToProcess, 300);
 
       console.log("\n\nafter compression: " + JSON.stringify(macobjects.length));
       return Promise.resolve();

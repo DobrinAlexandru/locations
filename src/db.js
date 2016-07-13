@@ -298,7 +298,7 @@ var db = {
         method: 'POST',
         json: true,
         body: {locations: location,  password:"4loc4",
-        curretUserId : excludeUserId,
+        currentUserId : excludeUserId,
               }
       });
   },
@@ -729,7 +729,7 @@ var db = {
         method: 'POST',
         json: true,
         body: { macObjects: macobject,
-                curretUserId : excludeUserId,
+                currentUserId : excludeUserId,
                 size : count,
                  password:"4loc4"
               }
