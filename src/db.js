@@ -299,7 +299,8 @@ var db = {
         json: true,
         body: {locations: location,  password:"4loc4",
         currentUserId : excludeUserId,
-              }
+        range : radius
+            }
       });
   },
   getLocationsNearSingleLocation: function(location, excludeUserId, radius, size) {

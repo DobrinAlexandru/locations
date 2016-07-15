@@ -24,8 +24,10 @@ var Bumps = {
         return this.createOrUpdateBumps(payload.userId, locations, (radius === 0));
       });
     }.bind(this);
-    
-    return retryPromiseFunction(0);
+  
+    return retryPromiseFunction(0).then(function(result) {
+       return result.bumpsToAdd <= 1 ? Promise.resolve(result) : retryPromiseFunction(1);
+    });
   },
 
   processMacAddressAndCreateOrUpdateBumps: function(payload) {
