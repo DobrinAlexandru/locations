@@ -5,5 +5,5 @@
 #
 
 # Pull base image.
-FROM alexdobrin/intersect:latest
+FROM alexdobrin/intersectapp_locations:latest
 # Install.
